@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="GSManagement.Api/GSManagement.Api.csproj" />
+    <Project Path="GSManagement.Domain/GSManagement.Domain.csproj" />
+  </Folder>
+</Solution>

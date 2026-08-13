@@ -1,0 +1,35 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqls2022
+    user: root
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql/data
+    restart: always
+
+  dotnet_app:
+    image: gsmanagement-api:latest
+    build:
+      context: .
+      dockerfile: GSManagement.Api/Dockerfile
+    container_name: web-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=GSDB;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+      # - ConnectionStrings__HostingConnection=Server=${Server};Database=${Database};User Id=${User_Id};Password=${Password};TrustServerCertificate=True;
+      - Jwt__Key=${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sqlserver
+    restart: always
+
+volumes:
+  sqlserver_data:
+    external: true
