@@ -59,6 +59,7 @@ dlldata.c
 .env
 .env.*
 *.env
+.vscode
 
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
