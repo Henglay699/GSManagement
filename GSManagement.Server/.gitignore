@@ -56,6 +56,11 @@ nunit-*.xml
 [Rr]eleasePS/
 dlldata.c
 
+# Environment files
+.env
+.env.*
+*.env
+
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
