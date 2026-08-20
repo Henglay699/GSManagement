@@ -137,7 +137,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
     public async Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, int Id, CancellationToken cancellationToken)
     {
         var user = await _context.Users
-            .Include(u => u.Roles)            
+            .Include(u => u.Roles)
             .FirstOrDefaultAsync(u => u.Id == Id, cancellationToken);
 
         if (user == null)

@@ -1,77 +1,114 @@
-import { Badge, Button, Table } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import { User } from "../models/user";
-import { deleteUser } from "../services/userapi";
+import { deleteUser } from "../services/userservice";
 
 function UserTable({ users }: { users: User[] }) {
-  // Simple helper to get initial letter for Avatar
   const getInitial = (name?: string) =>
     name ? name.charAt(0).toUpperCase() : "?";
 
   return (
-    <Table responsive hover className="align-middle mb-0">
-      <thead className="table-light text-secondary text-uppercase small">
-        <tr>
-          <th className="ps-4">User</th>
-          <th>Email</th>
-          <th>Status</th>
-          <th className="text-end pe-4">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {users.map((user) => (
-          <tr key={user.id}>
-            {/* User Profile Cell */}
-            <td className="ps-4 py-3">
-              <div className="d-flex align-items-center gap-3">
-                <div
-                  className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
-                  style={{ width: "38px", height: "38px", fontSize: "14px" }}
-                >
-                  {getInitial(user.userName)}
-                </div>
-                <div>
-                  <div className="fw-semibold text-dark">{user.userName}</div>
-                  <div className="text-muted small">ID: #{user.id}</div>
-                </div>
-              </div>
-            </td>
-
-            {/* Email Cell */}
-            <td>
-              <span className="text-secondary">{user.email}</span>
-            </td>
-
-            {/* Status Badge Cell */}
-            <td>
-              <Badge
-                bg={user.isActive === false ? "secondary" : "success"}
-                pill
-                className="px-2 py-1"
-              >
-                {user.isActive === false ? "Inactive" : "Active"}
-              </Badge>
-            </td>
-
-            {/* Actions Cell */}
-            <td className="text-end pe-4">
-              <div className="d-flex justify-content-end gap-2">
-                <Button variant="outline-secondary" size="sm" className="px-3">
-                  Edit
-                </Button>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  className="px-2"
-                  onClick={() => deleteUser(user.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm text-slate-600">
+        <thead className="bg-slate-100/75 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
+          <tr>
+            <th scope="col" className="px-6 py-3.5">
+              User
+            </th>
+            <th scope="col" className="px-6 py-3.5">
+              Email
+            </th>
+            <th scope="col" className="px-6 py-3.5">
+              Roles
+            </th>
+            <th scope="col" className="px-6 py-3.5">
+              Status
+            </th>
+            <th scope="col" className="px-6 py-3 text-right">
+              Actions
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </Table>
+        </thead>
+        <tbody className="divide-y divide-slate-200 bg-white">
+          {users.map((user) => (
+            <tr
+              key={user.id}
+              className="hover:bg-slate-50/80 transition-colors"
+            >
+              {/* User Profile */}
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                    {getInitial(user.userName)}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900">
+                      {user.userName}
+                    </div>
+                    <div className="text-xs text-slate-400">ID: #{user.id}</div>
+                  </div>
+                </div>
+              </td>
+
+              {/* Email */}
+              <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                {user.email}
+              </td>
+
+              {/* Roles */}
+              <td className="px-6 py-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {user.roles && user.roles.length > 0 ? (
+                    user.roles.map((role) => (
+                      <span
+                        key={role.id}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
+                      >
+                        {role.roleName}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">
+                      No roles
+                    </span>
+                  )}
+                </div>
+              </td>
+
+              {/* Status */}
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    user.isActive === false
+                      ? "bg-slate-100 text-slate-600 border border-slate-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  }`}
+                >
+                  {user.isActive === false ? "Inactive" : "Active"}
+                </span>
+              </td>
+
+              {/* Actions */}
+              <td className="px-6 py-4 whitespace-nowrap text-start">
+                <div className="flex items-center justify-end gap-2">
+                  <Link
+                    to={`/user/update/${user.id}`}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    onClick={() => deleteUser(user.id)}
+                    className="px-3 py-1.5 text-xs font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors shadow-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

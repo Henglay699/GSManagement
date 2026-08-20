@@ -14,6 +14,7 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<User> RefreshToken => Set<User>();
+    public DbSet<Client> Clients => Set<Client>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -1,6 +1,4 @@
-﻿using GSManagement.Domain.Entities;
-
-namespace GSManagement.Domain.Entities.JointEntities;
+﻿namespace GSManagement.Domain.Entities.JointEntities;
 
 public class UserRole
 {

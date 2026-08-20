@@ -44,5 +44,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 app.MapControllers();
-app.MapHub<UserHub>("/userhub");
+app.MapHub<UserHub>("/api/userhub");
 app.Run();
