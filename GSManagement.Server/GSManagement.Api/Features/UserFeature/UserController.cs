@@ -9,10 +9,19 @@ namespace GSManagement.Api.Features.UserFeature;
 public class UserController(IUserService userService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<UserResponse>>> GetAllUsers()
+    public async Task<ActionResult<PagedResult<UserResponse>>> GetUsers(
+        [FromQuery] int pageNumber,
+        [FromQuery] int pageSize,
+        [FromQuery] string? searchTerm,
+        CancellationToken ct)
     {
-        var users = await userService.GetUsersAsync(CancellationToken.None);
-        return users.IsSuccess ? Ok(users.Value) : Ok(users.ErrorMessage);
+        var results = await userService.GetUsersAsync(
+            pageNumber, pageSize, searchTerm, ct);
+        if (!results.IsSuccess)
+        {
+            return Ok(new PagedResult<UserResponse>([], 0, pageNumber, pageSize));
+        }
+        return Ok(results.Value);
     }
 
     [HttpGet("{id}")]

@@ -1,4 +1,4 @@
-import UserForm from "../../components/Userform";
+import UserForm from "../../components/user/Userform";
 import { createUser, UserFormData } from "../../services/userservice";
 
 function CreateUserPage() {

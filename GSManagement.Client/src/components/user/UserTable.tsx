@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { User } from "../models/user";
-import { deleteUser } from "../services/userservice";
+import { User } from "../../models/user";
+import { deleteUser } from "../../services/userservice";
 
 function UserTable({ users }: { users: User[] }) {
   const getInitial = (name?: string) =>
@@ -29,7 +29,7 @@ function UserTable({ users }: { users: User[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 bg-white">
-          {users.map((user) => (
+          {users?.map((user) => (
             <tr
               key={user.id}
               className="hover:bg-slate-50/80 transition-colors"
@@ -44,7 +44,7 @@ function UserTable({ users }: { users: User[] }) {
                     <div className="font-semibold text-slate-900">
                       {user.userName}
                     </div>
-                    <div className="text-xs text-slate-400">ID: #{user.id}</div>
+                    <div className="text-xs text-slate-500">ID - {user.id}</div>
                   </div>
                 </div>
               </td>
@@ -92,7 +92,7 @@ function UserTable({ users }: { users: User[] }) {
                 <div className="flex items-center justify-end gap-2">
                   <Link
                     to={`/user/update/${user.id}`}
-                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm !no-underline hover:!no-underline focus:!no-underline"
                   >
                     Edit
                   </Link>

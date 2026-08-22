@@ -14,6 +14,7 @@ function App() {
       <main className="flex-1 overflow-y-auto p-6">
         <Routes>
           <Route index element={<UserPage />} />
+          <Route path="/user" element={<UserPage />} />
           <Route path="/user/create" element={<CreateUserPage />} />
           <Route path="/user/update/:id" element={<UpdateUserPage />} />
         </Routes>

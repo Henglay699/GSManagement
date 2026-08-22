@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +14,7 @@ import {
 
 interface SidebarItemProps {
   icon: React.ReactNode;
+  to: string;
   text: string;
   active?: boolean;
   collapsed: boolean;
@@ -22,43 +24,48 @@ interface SidebarItemProps {
 const SidebarItem = ({
   icon,
   text,
+  to,
   active,
   collapsed,
   badge,
 }: SidebarItemProps) => {
   return (
-    <div
-      className={`relative flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
-        collapsed ? "justify-center px-0" : "px-3 gap-3"
-      } ${
-        active
-          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-      }`}
+    <Link
+      to={to}
+      className="!no-underline hover:!no-underline focus:!no-underline"
     >
-      <div className="text-xl flex items-center justify-center shrink-0">
-        {icon}
-      </div>
-
-      {!collapsed && (
-        <span className="font-medium text-sm whitespace-nowrap overflow-hidden transition-all">
-          {text}
-        </span>
-      )}
-
-      {!collapsed && badge && (
-        <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 group-hover:bg-indigo-200">
-          {badge}
-        </span>
-      )}
-
-      {/* Tooltip for Collapsed Mode */}
-      {collapsed && (
-        <div className="absolute left-full rounded-md px-2.5 py-1.5 ml-3 bg-slate-900 text-white text-xs font-medium whitespace-nowrap opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-lg">
-          {text}
+      <div
+        className={`relative flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
+          collapsed ? "justify-center px-0" : "px-3 gap-3"
+        } ${
+          active
+            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        }`}
+      >
+        <div className="text-xl flex items-center justify-center shrink-0">
+          {icon}
         </div>
-      )}
-    </div>
+
+        {!collapsed && (
+          <span className="font-medium text-sm whitespace-nowrap overflow-hidden transition-all">
+            {text}
+          </span>
+        )}
+
+        {!collapsed && badge && (
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 group-hover:bg-indigo-200">
+            {badge}
+          </span>
+        )}
+
+        {collapsed && (
+          <div className="absolute left-full rounded-md px-2.5 py-1.5 ml-3 bg-slate-900 text-white text-xs font-medium whitespace-nowrap opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-lg">
+            {text}
+          </div>
+        )}
+      </div>
+    </Link>
   );
 };
 
@@ -67,11 +74,15 @@ export default function ModernSideBar() {
   const [activeItem, setActiveItem] = useState("Users");
 
   const menuItems = [
-    { text: "Dashboard", icon: <LayoutDashboard size={20} /> },
-    { text: "Users", icon: <Users size={20} />, badge: "12" },
-    { text: "Projects", icon: <FolderPenIcon size={20} /> },
-    { text: "Analytics", icon: <BarChart2 size={20} /> },
-    { text: "Settings", icon: <Settings size={20} /> },
+    {
+      text: "Dashboard",
+      path: "/dashboard",
+      icon: <LayoutDashboard size={20} />,
+    },
+    { text: "Users", path: "/user", icon: <Users size={20} />, badge: "12" },
+    { text: "Projects", path: "/projects", icon: <FolderPenIcon size={20} /> },
+    { text: "Analytics", path: "/Dashboard", icon: <BarChart2 size={20} /> },
+    { text: "Settings", path: "/Dashboard", icon: <Settings size={20} /> },
   ];
 
   return (
@@ -116,6 +127,7 @@ export default function ModernSideBar() {
               <SidebarItem
                 icon={item.icon}
                 text={item.text}
+                to={item.path}
                 badge={item.badge}
                 active={activeItem === item.text}
                 collapsed={collapsed}
@@ -153,6 +165,7 @@ export default function ModernSideBar() {
           <SidebarItem
             icon={<LogOut size={18} className="text-rose-500" />}
             text="Logout"
+            to="/logout"
             collapsed={collapsed}
           />
         </div>

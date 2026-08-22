@@ -9,9 +9,22 @@ export interface UserFormData {
   roleIds?: number[];
 }
 
-// Get All Users
-export const fetchUsers = async (): Promise<User[]> => {
-  const response = await axios.get<User[]>("/api/user");
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const fetchUsers = async (
+  pageNumber: number,
+  pageSize: number,
+  searchTerm: string,
+): Promise<PagedResult<User>> => {
+  const response = await axios.get<PagedResult<User>>("/api/user", {
+    params: { pageNumber, pageSize, searchTerm },
+  });
   return response.data;
 };
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserFormData } from "../services/userservice";
-import { fetchRoles } from "../services/roleservice";
-import Role from "../models/role";
+import { UserFormData } from "../../services/userservice";
+import { fetchRoles } from "../../services/roleservice";
+import Role from "../../models/role";
 import {
   Loader2,
   ArrowLeft,
@@ -83,7 +83,7 @@ function UserForm({
         roleIds: selectedRoleIds,
         ...(password.trim() ? { password } : {}),
       });
-      navigate("/");
+      navigate("/user");
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setErrorMessage(error.response?.data.error);

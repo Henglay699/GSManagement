@@ -39,11 +39,28 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
         return Result<UserResponse?>.Success(user);
     }
 
-
-    public async Task<Result<List<UserResponse>>> GetUsersAsync(CancellationToken cancellationToken)
+    //------------------------------==--------------------------------------------
+    public async Task<Result<PagedResult<UserResponse>>> GetUsersAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchTerm, CancellationToken ct)
     {
-        var users = await _context.Users.OrderByDescending(u => u.Id)
-            .AsNoTracking()
+
+        var query = _context.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLower();
+            query = query.Where(u => u.UserName.ToLower().Contains(term)
+                        || u.Email.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var users = await query
+            .OrderByDescending(u => u.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(u => new UserResponse
             (
                 u.Id,
@@ -60,17 +77,18 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
                         p.PermissionName.ToString()
                     )).ToList()
                 )).ToList()
-            )).ToListAsync(cancellationToken);
+            )).ToListAsync(ct);
 
         if (users is null || users.Count == 0)
         {
-            return Result<List<UserResponse>>.Fail("No users is created yet.", ErrorType.None);
+            return Result<PagedResult<UserResponse>>.Fail("No users is created yet.", ErrorType.None);
         }
-        return Result<List<UserResponse>>.Success(users);
+        var result = new PagedResult<UserResponse>(users, totalCount, pageNumber, pageSize);
+        return Result<PagedResult<UserResponse>>.Success(result);
     }
 
 
-
+    //-------------------------------------==--------------------------------------------
     public async Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken)
     {
         var existingUser = await _context.Users
@@ -80,9 +98,9 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
 
         if (existingUser != null)
         {
-            if (existingUser.Email.ToLower().Equals(request.Email, StringComparison.CurrentCultureIgnoreCase))
+            if (existingUser.Email.ToLower().Equals(request.Email, StringComparison.OrdinalIgnoreCase))
                 return Result<UserResponse>.Fail("Email is already used by another user", ErrorType.Conflict);
-            if (existingUser.UserName.ToLower().Equals(request.UserName, StringComparison.CurrentCultureIgnoreCase))
+            if (existingUser.UserName.ToLower().Equals(request.UserName, StringComparison.OrdinalIgnoreCase))
                 return Result<UserResponse>.Fail("Username is already used by another user", ErrorType.Conflict);
         }
 
@@ -133,7 +151,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
     }
 
 
-
+    //------------------------------==--------------------------------------------
     public async Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, int Id, CancellationToken cancellationToken)
     {
         var user = await _context.Users
@@ -214,6 +232,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
         return Result<UserResponse>.Success(response);
     }
 
+    //------------------------------==--------------------------------------------
     public async Task<Result<bool>> DeleteUserAsync(int? Id, CancellationToken cancellationToken)
     {
         if (Id is null)

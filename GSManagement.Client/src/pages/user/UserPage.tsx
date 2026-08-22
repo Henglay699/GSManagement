@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import UserTable from "../../components/UserTable";
+import UserTable from "../../components/user/UserTable";
 import { User } from "../../models/user";
 import { fetchUsers } from "../../services/userservice";
 import * as signalR from "@microsoft/signalr";
@@ -15,32 +15,26 @@ function UserPage() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const itemsPerPage = 5;
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  // Pagination Math
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
-
+  // Reset page to 1 when search term changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  
+  // Fetch paginated data from backend
   useEffect(() => {
     const loadUsers = async () => {
       setLoading(true);
       try {
-        const allUsers = await fetchUsers();
-        setUsers(allUsers);
+        const data = await fetchUsers(currentPage, itemsPerPage, searchTerm);
+        setUsers(data.items);
+        setTotalPages(data.totalPages);
+        setTotalCount(data.totalCount);
+        setErrorMessage(undefined);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setErrorMessage("Backend server can't be reached.");
@@ -53,33 +47,32 @@ function UserPage() {
     };
 
     loadUsers();
+  }, [currentPage, searchTerm]);
 
+  // SignalR setup for real-time updates
+  useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl("/api/userhub")
       .withAutomaticReconnect()
       .build();
 
-    connection.on("UserCreated", (newUser: User) => {
-      setUsers((prevUsers) => [newUser, ...prevUsers]);
+    connection.on("UserCreated", () => {
+      // Refresh current page on mutation
+      setCurrentPage((prev) => prev);
     });
 
     connection.on("UserUpdated", (updatedUser: User) => {
-      setUsers((prevUsers) =>
-        prevUsers.map((user: User) =>
-          user.id === updatedUser.id ? { ...user, ...updatedUser } : user,
-        ),
+      setUsers((prev) =>
+        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
       );
     });
 
     connection.on("UserDeleted", (deletedUserId: number) => {
-      setUsers((prevUsers) =>
-        prevUsers.filter((user) => user.id !== deletedUserId),
-      );
+      setUsers((prev) => prev.filter((user) => user.id !== deletedUserId));
+      setTotalCount((prev) => prev - 1);
     });
 
-    connection
-      .start()
-      .catch((err) => console.error("❌ SignalR Connection Error:", err));
+    connection.start().catch((err) => console.error("❌ SignalR Error:", err));
 
     return () => {
       if (connection.state === signalR.HubConnectionState.Connected) {
@@ -88,9 +81,11 @@ function UserPage() {
     };
   }, []);
 
+  const startIndex = (currentPage - 1) * itemsPerPage;
+
   return (
     <div className="max-w-7xl mx-auto space-y-3">
-      {/* Compact Header Container */}
+      {/* Header */}
       <div className="bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-800 tracking-tight leading-none">
@@ -137,13 +132,13 @@ function UserPage() {
           <div className="py-10 text-center text-xs font-medium text-rose-500">
             {errorMessage}
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : users.length === 0 ? (
           <div className="py-10 text-center text-xs text-slate-400">
             No users found.
           </div>
         ) : (
           <>
-            <UserTable users={paginatedUsers} />
+            <UserTable users={users} />
 
             {/* Pagination Bar */}
             <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
@@ -154,11 +149,11 @@ function UserPage() {
                 </span>{" "}
                 to{" "}
                 <span className="font-semibold text-slate-700">
-                  {Math.min(startIndex + itemsPerPage, filteredUsers.length)}
+                  {Math.min(startIndex + itemsPerPage, totalCount)}
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-slate-700">
-                  {filteredUsers.length}
+                  {totalCount}
                 </span>{" "}
                 users
               </span>
@@ -182,7 +177,7 @@ function UserPage() {
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage >= totalPages}
                   className="p-1 rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight size={16} />
