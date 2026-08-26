@@ -1,5 +1,6 @@
 using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
+using GSManagement.Domain.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GSManagement.Api.Middlewares.auth;

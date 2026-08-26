@@ -17,10 +17,7 @@ public class UserController(IUserService userService) : ControllerBase
     {
         var results = await userService.GetUsersAsync(
             pageNumber, pageSize, searchTerm, ct);
-        if (!results.IsSuccess)
-        {
-            return Ok(new PagedResult<UserResponse>([], 0, pageNumber, pageSize));
-        }
+
         return Ok(results.Value);
     }
 

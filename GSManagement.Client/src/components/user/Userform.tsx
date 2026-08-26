@@ -39,14 +39,12 @@ function UserForm({
   // Fetch available roles on mount
   useEffect(() => {
     const loadRoles = async () => {
-      setLoadingRoles(true);
       try {
-        const roles = await fetchRoles();
-        setAvailableRoles(roles);
+        // Pass pagination arguments or handle the PagedResult wrapper
+        const data = await fetchRoles(1, 100, "");
+        setAvailableRoles(data.items ?? []); // Extract items array
       } catch (err) {
-        console.error("Failed to load roles", err);
-      } finally {
-        setLoadingRoles(false);
+        console.error("Failed to fetch roles", err);
       }
     };
     loadRoles();
@@ -74,7 +72,7 @@ function UserForm({
     e.preventDefault();
     setSubmitting(true);
     setErrorMessage(null);
-
+    setLoadingRoles(true);
     try {
       await onSubmit({
         userName,
@@ -83,13 +81,14 @@ function UserForm({
         roleIds: selectedRoleIds,
         ...(password.trim() ? { password } : {}),
       });
-      navigate("/user");
+      navigate("/users");
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setErrorMessage(error.response?.data.error);
       }
     } finally {
       setSubmitting(false);
+      setLoadingRoles(false);
     }
   };
 

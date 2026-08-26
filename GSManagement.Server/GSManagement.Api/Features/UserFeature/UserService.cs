@@ -79,10 +79,6 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
                 )).ToList()
             )).ToListAsync(ct);
 
-        if (users is null || users.Count == 0)
-        {
-            return Result<PagedResult<UserResponse>>.Fail("No users is created yet.", ErrorType.None);
-        }
         var result = new PagedResult<UserResponse>(users, totalCount, pageNumber, pageSize);
         return Result<PagedResult<UserResponse>>.Success(result);
     }

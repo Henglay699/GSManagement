@@ -9,11 +9,19 @@ namespace GSManagement.Api.Features.RoleFeature;
 public class RoleController(IRoleService roleService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<RoleResponse>>> GetAlRoles(CancellationToken ct)
+    public async Task<ActionResult<PagedResult<RoleResponse>>> GetAlRoles(
+        [FromQuery] int pageNumber,
+        [FromQuery] int pageSize,
+        [FromQuery] string? searchTerm,
+        CancellationToken ct)
     {
-        var results = await roleService.GetAllRoleAsync(ct);
+        var results = await roleService.GetAllRoleAsync(
+            pageNumber,
+            pageSize,
+            searchTerm,
+            ct);
 
-        return results.IsSuccess ? Ok(results.Value) : Ok(new { error = results.ErrorMessage });
+        return Ok(results.Value);
     }
 
     [HttpGet("{id}")]

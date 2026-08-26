@@ -1,9 +1,11 @@
-import Permission from "./permision";
+import Permission from "./permission";
 
 interface Role {
   id: number;
   roleName: string;
-  permission: Permission[]
+  description: string | null;
+  createdAt: Date;
+  permissions: Permission[];
 }
 
-export default Role
+export default Role;

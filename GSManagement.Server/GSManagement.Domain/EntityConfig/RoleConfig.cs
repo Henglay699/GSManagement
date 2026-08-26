@@ -13,6 +13,7 @@ internal class RoleConfig : IEntityTypeConfiguration<Role>
         builder.HasIndex(e => e.RoleName).IsUnique();
 
         builder.Property(e => e.Id).ValueGeneratedOnAdd();
+        builder.Property(e => e.Description).HasMaxLength(120);
         builder.Property(u => u.RoleName)
                .IsRequired()
                .HasMaxLength(60);

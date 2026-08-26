@@ -1,113 +1,101 @@
 import { Link } from "react-router-dom";
 import { User } from "../../models/user";
-import { deleteUser } from "../../services/userservice";
+import { Mail, Shield, Edit, Trash2 } from "lucide-react";
 
-function UserTable({ users }: { users: User[] }) {
-  const getInitial = (name?: string) =>
-    name ? name.charAt(0).toUpperCase() : "?";
+interface UserTableProps {
+  users: User[];
+  onDelete: (user: User) => void;
+}
+
+function UserTable({ users, onDelete }: UserTableProps) {
+  // Helper to extract 2-letter initials (e.g. "Iqbal Bahroin" -> "IB")
+  const getInitials = (name?: string) => {
+    if (!name) return "?";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm text-slate-600">
-        <thead className="bg-slate-100/75 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
-          <tr>
-            <th scope="col" className="px-6 py-3.5">
-              User
-            </th>
-            <th scope="col" className="px-6 py-3.5">
-              Email
-            </th>
-            <th scope="col" className="px-6 py-3.5">
-              Roles
-            </th>
-            <th scope="col" className="px-6 py-3.5">
-              Status
-            </th>
-            <th scope="col" className="px-6 py-3 text-right">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200 bg-white">
-          {users?.map((user) => (
-            <tr
-              key={user.id}
-              className="hover:bg-slate-50/80 transition-colors"
-            >
-              {/* User Profile */}
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    {getInitial(user.userName)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-slate-900">
-                      {user.userName}
-                    </div>
-                    <div className="text-xs text-slate-500">ID - {user.id}</div>
-                  </div>
-                </div>
-              </td>
+    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg-slate-100/50">
+      {users?.map((user) => {
+        const isActive = user.isActive !== false;
 
-              {/* Email */}
-              <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                {user.email}
-              </td>
+        return (
+          <div
+            key={user.id}
+            className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3 relative group"
+          >
+            {/* Top Bar: Status Badge & Actions */}
+            <div className="flex items-center justify-between">
+              <span
+                className={`text-[11px] font-medium ${
+                  isActive ? "text-emerald-600" : "text-red-400"
+                }`}
+              >
+                {isActive ? "Active" : "In Active"}
+              </span>
 
-              {/* Roles */}
-              <td className="px-6 py-4">
-                <div className="flex flex-wrap gap-1.5">
-                  {user.roles && user.roles.length > 0 ? (
-                    user.roles.map((role) => (
-                      <span
-                        key={role.id}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
-                      >
-                        {role.roleName}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-400 italic">
-                      No roles
-                    </span>
-                  )}
-                </div>
-              </td>
-
-              {/* Status */}
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user.isActive === false
-                      ? "bg-slate-100 text-slate-600 border border-slate-200"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1">
+                <Link
+                  to={`/user/update/${user.id}`}
+                  className="p-1 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Edit user"
                 >
-                  {user.isActive === false ? "Inactive" : "Active"}
-                </span>
-              </td>
+                  <Edit size={14} />
+                </Link>
+                <button
+                  onClick={() => onDelete(user)}
+                  className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Delete user"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
 
-              {/* Actions */}
-              <td className="px-6 py-4 whitespace-nowrap text-start">
-                <div className="flex items-center justify-end gap-2">
-                  <Link
-                    to={`/user/update/${user.id}`}
-                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm !no-underline hover:!no-underline focus:!no-underline"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => deleteUser(user.id)}
-                    className="px-3 py-1.5 text-xs font-medium text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors shadow-sm"
-                  >
-                    Delete
-                  </button>
+            {/* User Main Info (Name, Role, Initials Avatar) */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1 pr-2">
+                <h5 className="text-sm font-bold text-slate-800 line-clamp-1">
+                  {user.userName}
+                </h5>
+                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                  <Shield size={12} className="text-slate-800 shrink-0" />
+                  <span className="line-clamp-1">
+                    {user.roles && user.roles.length > 0
+                      ? user.roles.map((r) => r.roleName).join(", ")
+                      : "No Role"}
+                  </span>
                 </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+
+              {/* Avatar with Initials & Status Dot */}
+              <div className="relative shrink-0">
+                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs tracking-wider shadow-inner">
+                  {getInitials(user.userName)}
+                </div>
+                <span
+                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                    isActive ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Contact Details Footer */}
+            <div className="pt-2 border-t border-slate-100 space-y-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <Mail size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate">{user.email}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

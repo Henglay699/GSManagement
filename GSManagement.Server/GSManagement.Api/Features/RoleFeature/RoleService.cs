@@ -20,38 +20,54 @@ public class RoleService(GSDbContext context) : IRoleService
         }
 
         var permissions = role.Permissions
-                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString())).ToList();
-        var response = new RoleResponse(role.Id, role.RoleName, permissions);
+                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString(), p.Module.ToString())).ToList();
+        var response = new RoleResponse(role.Id, role.RoleName, role.Description!, role.CreatedAt, permissions);
         return Result<RoleResponse>.Success(response);
     }
 
 
-
-    public async Task<Result<List<RoleResponse>>> GetAllRoleAsync(CancellationToken cancellationToken)
+    //------------------------------==--------------------------------------------
+    public async Task<Result<PagedResult<RoleResponse>>> GetAllRoleAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchTerm,
+        CancellationToken ct)
     {
-        var roles = await context.Roles
-              .AsNoTracking()
+        var query = context.Roles.Include(r => r.Permissions).AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLower();
+            query = query.Where(r => r.RoleName.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+
+        var roles = await query
+              .OrderByDescending(r => r.Id)
+              .Skip((pageNumber - 1) * pageSize)
+              .Take(pageSize)
               .Select(r => new RoleResponse
               (
                   r.Id,
                   r.RoleName,
+                  r.Description!,
+                  r.CreatedAt,
                   r.Permissions.Select(p => new PermissionResponse
                   (
                       p.Id,
-                      p.PermissionName.ToString()
+                      p.PermissionName.ToString(),
+                      p.Module.ToString()
                   )).ToList()
-              )).ToListAsync(cancellationToken);
+              )).ToListAsync(ct);
 
-        if (roles is null || roles.Count == 0)
-        {
-            return Result<List<RoleResponse>>.Fail("Role have not created yet.", ErrorType.NotFound);
-        }
 
-        return Result<List<RoleResponse>>.Success(roles);
+        var results = new PagedResult<RoleResponse>(roles, totalCount, pageNumber, pageSize);
+        return Result<PagedResult<RoleResponse>>.Success(results);
     }
 
 
-
+    //------------------------------==--------------------------------------------
     public async Task<Result<RoleResponse>> CreateRoleAsync(CreateRoleRequest request, CancellationToken cancellationToken)
     {
         var existingRole = await context.Roles
@@ -79,6 +95,8 @@ public class RoleService(GSDbContext context) : IRoleService
         var role = new Role
         {
             RoleName = request.RoleName,
+            Description = request.Description,
+            CreatedAt = DateTime.Now
         };
         foreach (var permission in validPermissions)
         {
@@ -88,13 +106,13 @@ public class RoleService(GSDbContext context) : IRoleService
         await context.SaveChangesAsync(cancellationToken);
 
         var permissionsName = role.Permissions
-                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString())).ToList();
-        var response = new RoleResponse(role.Id, role.RoleName, permissionsName);
+                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString(), p.Module.ToString())).ToList();
+        var response = new RoleResponse(role.Id, role.RoleName, role.Description!, role.CreatedAt, permissionsName);
         return Result<RoleResponse>.Success(response);
     }
 
 
-
+    //------------------------------==--------------------------------------------
     public async Task<Result<RoleResponse>> UpdateRoleAsync(UpdateRoleRequest request, int Id, CancellationToken cancellationToken)
     {
         var role = await context.Roles
@@ -132,6 +150,7 @@ public class RoleService(GSDbContext context) : IRoleService
         }
 
         role.RoleName = request.RoleName;
+        role.Description = request.Description;
         role.Permissions.Clear();
         foreach (var permission in newPermissions)
         {
@@ -141,14 +160,14 @@ public class RoleService(GSDbContext context) : IRoleService
         await context.SaveChangesAsync(cancellationToken);
 
         var assignedPermissionNames = role.Permissions
-                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString())).ToList();
+                .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString(), p.Module.ToString())).ToList();
 
-        var response = new RoleResponse(role.Id, role.RoleName, assignedPermissionNames);
+        var response = new RoleResponse(role.Id, role.RoleName, role.Description, role.CreatedAt, assignedPermissionNames);
         return Result<RoleResponse>.Success(response);
     }
 
 
-
+    //------------------------------==--------------------------------------------
     public async Task<Result<bool>> DeleteRoleAsync(int Id, CancellationToken cancellationToken)
     {
         var role = await context.Roles.FirstOrDefaultAsync(r => r.Id == Id, cancellationToken);

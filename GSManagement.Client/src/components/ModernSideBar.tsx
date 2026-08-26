@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -9,8 +9,26 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ShieldCheck,
+  UserCheck,
+  Shield,
+  KeyRound,
 } from "lucide-react";
+
+interface SubMenuItem {
+  text: string;
+  path: string;
+  icon: React.ReactNode;
+}
+
+interface MenuItem {
+  text: string;
+  path?: string;
+  icon: React.ReactNode;
+  badge?: string;
+  children?: SubMenuItem[];
+}
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -71,24 +89,49 @@ const SidebarItem = ({
 
 export default function ModernSideBar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState("Users");
+  const [userMgmtOpen, setUserMgmtOpen] = useState(true);
+  const location = useLocation();
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       text: "Dashboard",
       path: "/dashboard",
       icon: <LayoutDashboard size={20} />,
     },
-    { text: "Users", path: "/user", icon: <Users size={20} />, badge: "12" },
+    {
+      text: "User Management",
+      icon: <Users size={20} />,
+      children: [
+        {
+          text: "Users",
+          path: "/users",
+          icon: <UserCheck size={18} />,
+        },
+        {
+          text: "Roles",
+          path: "/roles",
+          icon: <Shield size={18} />,
+        },
+        {
+          text: "Permissions",
+          path: "/permissions",
+          icon: <KeyRound size={18} />,
+        },
+      ],
+    },
     { text: "Projects", path: "/projects", icon: <FolderPenIcon size={20} /> },
-    { text: "Analytics", path: "/Dashboard", icon: <BarChart2 size={20} /> },
-    { text: "Settings", path: "/Dashboard", icon: <Settings size={20} /> },
+    { text: "Analytics", path: "/analytics", icon: <BarChart2 size={20} /> },
+    { text: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
+
+  const isChildActive = (children?: SubMenuItem[]) => {
+    return children?.some((child) => location.pathname === child.path);
+  };
 
   return (
     <aside
       className={`relative h-screen bg-white border-r border-slate-200 flex flex-col justify-between py-4 transition-all duration-300 shrink-0 ${
-        collapsed ? "w-16 px-2" : "w-60 px-3"
+        collapsed ? "w-16 px-2" : "w-65 px-3"
       }`}
     >
       {/* Top Section */}
@@ -122,18 +165,84 @@ export default function ModernSideBar() {
 
         {/* Navigation Links */}
         <nav className="mt-4 space-y-1">
-          {menuItems.map((item) => (
-            <div key={item.text} onClick={() => setActiveItem(item.text)}>
+          {menuItems.map((item) => {
+            // Check if item has children (dropdown)
+            if (item.children) {
+              const hasActiveChild = isChildActive(item.children);
+
+              return (
+                <div key={item.text} className="space-y-1">
+                  {/* Parent Button */}
+                  <button
+                    onClick={() => {
+                      if (collapsed) setCollapsed(false);
+                      setUserMgmtOpen(!userMgmtOpen);
+                    }}
+                    className={`w-full flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
+                      collapsed ? "justify-center px-0" : "px-3 gap-3"
+                    } ${
+                      hasActiveChild
+                        ? "bg-indigo-50 text-indigo-600 font-semibold"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                  >
+                    <div className="text-xl flex items-center justify-center shrink-0">
+                      {item.icon}
+                    </div>
+
+                    {!collapsed && (
+                      <>
+                        <span className="font-medium text-sm whitespace-nowrap overflow-hidden">
+                          {item.text}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={`ml-auto transition-transform duration-200 ${
+                            userMgmtOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </>
+                    )}
+
+                    {collapsed && (
+                      <div className="absolute left-full rounded-md px-2.5 py-1.5 ml-3 bg-slate-900 text-white text-xs font-medium whitespace-nowrap opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-lg">
+                        {item.text}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Sub-menu items */}
+                  {!collapsed && userMgmtOpen && (
+                    <div className="pl-6 space-y-1 border-l-2 border-slate-100 ml-4">
+                      {item.children.map((child) => (
+                        <SidebarItem
+                          key={child.text}
+                          icon={child.icon}
+                          text={child.text}
+                          to={child.path}
+                          active={location.pathname === child.path}
+                          collapsed={false}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Standard Single Link
+            return (
               <SidebarItem
+                key={item.text}
                 icon={item.icon}
                 text={item.text}
-                to={item.path}
+                to={item.path!}
                 badge={item.badge}
-                active={activeItem === item.text}
+                active={location.pathname === item.path}
                 collapsed={collapsed}
               />
-            </div>
-          ))}
+            );
+          })}
         </nav>
       </div>
 
