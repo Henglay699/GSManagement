@@ -175,7 +175,7 @@ function PermissionDetailPage() {
                     Frontend Authorization Check
                   </span>
                   <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-indigo-400">
-                    JSX / React
+                    TSX / React
                   </span>
                 </div>
                 <pre className="text-xs font-mono text-emerald-400 overflow-x-auto">
@@ -196,7 +196,7 @@ function PermissionDetailPage() {
                   </span>
                 </div>
                 <pre className="text-xs font-mono text-indigo-300 overflow-x-auto">
-                  <code>{`@Authorize(Roles = "${permission.permissionName}"))`}</code>
+                  <code>{`@Authorize(Roles = "${permission.permissionName}")`}</code>
                 </pre>
               </div>
 

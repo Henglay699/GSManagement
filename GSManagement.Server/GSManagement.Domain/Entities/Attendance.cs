@@ -1,14 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using GSManagement.Domain.Entities.Enums;
 
 namespace GSManagement.Domain.Entities;
-
-public enum AttendanceStatus
-{
-    OnTime,
-    Late,
-    Leave,
-    Absent
-}
 
 public class Attendance
 {
@@ -25,6 +18,8 @@ public class Attendance
 
     public AttendanceStatus Status { get; set; }
     public string? Remark { get; set; }
+    public int? LeaveRequestId { get; set; }
 
     public User? User { get; set; }
+    public LeaveRequest? LeaveRequest { get; set; }
 }

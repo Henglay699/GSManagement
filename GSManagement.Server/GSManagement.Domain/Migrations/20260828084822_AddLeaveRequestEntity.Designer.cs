@@ -3,6 +3,7 @@ using System;
 using GSManagement.Domain.DB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GSManagement.Domain.Migrations
 {
     [DbContext(typeof(GSDbContext))]
-    partial class GSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828084822_AddLeaveRequestEntity")]
+    partial class AddLeaveRequestEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");

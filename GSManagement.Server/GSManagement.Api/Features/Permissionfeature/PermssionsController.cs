@@ -1,4 +1,5 @@
 using GSManagement.Api.Shared.Models;
+using GSManagement.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GSManagement.Api.Features.Permissionfeature;
@@ -27,5 +28,11 @@ public class PermissionsController(PermissionService permissionService) : Contro
             };
         }
         return Ok(results.Value);
+    }
+    [HttpGet("attendances")]
+    public async Task<ActionResult<Attendance>> GetAttendance(CancellationToken ct)
+    {
+        var results = await permissionService.GetAttendanceAsync(ct);
+        return Ok(results);
     }
 }

@@ -8,5 +8,4 @@ public class Client
     public required string PasswordHash { get; set; }
     public required string Vat { get; set; }
     public string? BusinessType { get; set; }
-    
 }

@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  FolderPenIcon,
   BarChart2,
   Settings,
   LogOut,
@@ -13,7 +12,10 @@ import {
   ShieldCheck,
   UserCheck,
   Shield,
+  Clock,
+  Clock10Icon,
   KeyRound,
+  Activity,
 } from "lucide-react";
 
 interface SubMenuItem {
@@ -89,7 +91,15 @@ const SidebarItem = ({
 
 export default function ModernSideBar() {
   const [collapsed, setCollapsed] = useState(false);
-  const [userMgmtOpen, setUserMgmtOpen] = useState(true);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    "User Management": false,
+  });
+  const toggleSubmenu = (text: string) => {
+    setOpenSubmenus((prev) => ({
+      ...prev,
+      [text]: !prev[text],
+    }));
+  };
   const location = useLocation();
 
   const menuItems: MenuItem[] = [
@@ -119,7 +129,22 @@ export default function ModernSideBar() {
         },
       ],
     },
-    { text: "Projects", path: "/projects", icon: <FolderPenIcon size={20} /> },
+    {
+      text: "Daily Attendance",
+      icon: <Clock size={20} />,
+      children: [
+        {
+          text: "Dashboard",
+          path: "/attendance",
+          icon: <Activity size={20} />,
+        },
+        {
+          text: "Leave",
+          path: "/leave",
+          icon: <Clock10Icon size={20} />,
+        },
+      ],
+    },
     { text: "Analytics", path: "/analytics", icon: <BarChart2 size={20} /> },
     { text: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
@@ -169,14 +194,14 @@ export default function ModernSideBar() {
             // Check if item has children (dropdown)
             if (item.children) {
               const hasActiveChild = isChildActive(item.children);
-
+              const isOpen = !!openSubmenus[item.text];
               return (
                 <div key={item.text} className="space-y-1">
                   {/* Parent Button */}
                   <button
                     onClick={() => {
                       if (collapsed) setCollapsed(false);
-                      setUserMgmtOpen(!userMgmtOpen);
+                      toggleSubmenu(item.text);
                     }}
                     className={`w-full flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
                       collapsed ? "justify-center px-0" : "px-3 gap-3"
@@ -198,7 +223,7 @@ export default function ModernSideBar() {
                         <ChevronDown
                           size={16}
                           className={`ml-auto transition-transform duration-200 ${
-                            userMgmtOpen ? "rotate-180" : ""
+                            isOpen ? "rotate-180" : ""
                           }`}
                         />
                       </>
@@ -212,7 +237,7 @@ export default function ModernSideBar() {
                   </button>
 
                   {/* Sub-menu items */}
-                  {!collapsed && userMgmtOpen && (
+                  {!collapsed && isOpen && (
                     <div className="pl-6 space-y-1 border-l-2 border-slate-100 ml-4">
                       {item.children.map((child) => (
                         <SidebarItem

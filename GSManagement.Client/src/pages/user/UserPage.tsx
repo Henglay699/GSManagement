@@ -163,8 +163,8 @@ function UserPage() {
                 className="pl-7 pr-6 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer appearance-none"
               >
                 <option value="all">Status: All</option>
-                <option value="active">Status: Online / Active</option>
-                <option value="inactive">Status: Offline / Inactive</option>
+                <option value="active">Status: Active</option>
+                <option value="inactive">Status: Inactive</option>
               </select>
             </div>
           </div>

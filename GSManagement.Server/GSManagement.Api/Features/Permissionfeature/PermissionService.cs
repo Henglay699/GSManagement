@@ -1,5 +1,6 @@
 using GSManagement.Api.Shared.Models;
 using GSManagement.Domain.DB;
+using GSManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace GSManagement.Api.Features.Permissionfeature;
@@ -40,5 +41,10 @@ public class PermissionService(GSDbContext db)
         }
 
         return Result<PermissionResponse>.Success(permissions);
+    }
+
+    public Task<List<Attendance>> GetAttendanceAsync(CancellationToken ct)
+    {
+        return db.Attendances.ToListAsync(ct);
     }
 }

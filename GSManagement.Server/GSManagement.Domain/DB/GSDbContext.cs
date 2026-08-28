@@ -16,6 +16,7 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
     public DbSet<User> RefreshToken => Set<User>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,7 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
         modelBuilder.ApplyConfiguration(new RefreshTokenConfig());
         modelBuilder.ApplyConfiguration(new PermissionConfig());
         modelBuilder.ApplyConfiguration(new AttendanceConfig());
+        modelBuilder.ApplyConfiguration(new LeaveRequestConfig());
 
         base.OnModelCreating(modelBuilder);
     }
