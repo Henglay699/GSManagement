@@ -29,10 +29,10 @@ public class PermissionsController(PermissionService permissionService) : Contro
         }
         return Ok(results.Value);
     }
-    [HttpGet("attendances")]
-    public async Task<ActionResult<Attendance>> GetAttendance(CancellationToken ct)
-    {
-        var results = await permissionService.GetAttendanceAsync(ct);
-        return Ok(results);
-    }
+    // [HttpGet("attendances")]
+    // public async Task<ActionResult<Attendance>> GetAttendance(CancellationToken ct)
+    // {
+    //     var results = await permissionService.GetAttendanceAsync(ct);
+    //     return Ok(results);
+    // }
 }

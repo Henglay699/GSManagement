@@ -8,7 +8,7 @@ import {
   Calendar,
   FileText,
 } from "lucide-react";
-import formatDate from "../../utils/datetimeformater";
+import { formatDate } from "../../utils/datetimeformater";
 
 interface RoleTableProps {
   roles: Role[];

@@ -60,9 +60,12 @@ function UserTable({ users, onDelete }: UserTableProps) {
             {/* User Main Info (Name, Role, Initials Avatar) */}
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-1 pr-2">
-                <h5 className="text-sm font-bold text-slate-800 line-clamp-1">
+                <Link
+                  to={`/user/detail/${user.id}`}
+                  className="text-sm font-bold text-indigo-900 text-slate-700 hover:text-indigo-600 line-clamp-1 transition-colors"
+                >
                   {user.userName}
-                </h5>
+                </Link>
                 <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
                   <Shield size={12} className="text-slate-800 shrink-0" />
                   <span className="line-clamp-1">

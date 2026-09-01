@@ -104,23 +104,57 @@ public static class DatabaseSeeder
         if (!await context.Attendances.AnyAsync())
         {
             var chhunleang = await context.Users.FirstAsync(u => u.Email == "chhunleang@gmail.com");
+            var henglay = await context.Users.FirstAsync(u => u.Email == "henglay699@gmail.com");
+            var thnin = await context.Users.FirstAsync(u => u.Email == "vicheathnin@gmail.com");
+            var lycheng = await context.Users.FirstAsync(u => u.Email == "lycheng@gmail.com");
+            var helen = await context.Users.FirstAsync(u => u.Email == "helen@gmail.com");
 
-            await context.Attendances.AddAsync(
+            await context.Attendances.AddRangeAsync(
                 new Attendance
                 {
                     UserId = chhunleang.Id,
                     Date = DateOnly.FromDateTime(DateTime.Now),
                     CheckInTime = new TimeOnly(8, 0),
+                    Status = AttendanceStatus.OnTime,
+                    Remark = "Late"
+                },
+                new Attendance
+                {
+                    UserId = henglay.Id,
+                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    CheckInTime = new TimeOnly(8, 0),
                     CheckOutTime = new TimeOnly(16, 0),
                     Status = AttendanceStatus.OnTime,
                     Remark = "Arrived On Time"
+                },
+                new Attendance
+                {
+                    UserId = thnin.Id,
+                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Status = AttendanceStatus.Leave,
+                    Remark = "On Leave"
+                },
+                new Attendance
+                {
+                    UserId = lycheng.Id,
+                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Status = AttendanceStatus.Absent,
+                    Remark = "Absent Not Inform"
+                },
+                new Attendance
+                {
+                    UserId = helen.Id,
+                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    CheckInTime = new TimeOnly(8, 26),
+                    CheckOutTime = new TimeOnly(16, 0),
+                    Status = AttendanceStatus.Late,
+                    Remark = "Late"
                 }
             );
             await context.SaveChangesAsync();
         }
     }
 
-    // Helper method to map AppPermission enum to its respective PermissionModule
     private static PermissionModule GetModuleFromPermission(AppPermission permission)
     {
         return permission switch

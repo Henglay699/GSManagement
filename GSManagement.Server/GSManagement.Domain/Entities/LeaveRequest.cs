@@ -14,4 +14,5 @@ public class LeaveRequest
     public DateOnly CreatedAt { get; set; }
 
     public User? User { get; set; }
+
 }

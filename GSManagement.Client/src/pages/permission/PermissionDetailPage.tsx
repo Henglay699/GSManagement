@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import Permission from "../../models/permission";
-import formatDate from "../../utils/datetimeformater";
+import { formatDate } from "../../utils/datetimeformater";
 
 function PermissionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +65,7 @@ function PermissionDetailPage() {
                 Permission Details
               </h1>
               <span className="text-[10px] font-mono font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
-                ID: #{id}
+                ID: {id}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -196,7 +196,7 @@ function PermissionDetailPage() {
                   </span>
                 </div>
                 <pre className="text-xs font-mono text-indigo-300 overflow-x-auto">
-                  <code>{`@Authorize(Roles = "${permission.permissionName}")`}</code>
+                  <code>{`[PermissionRequired(Policy = "${permission.permissionName}")]"`}</code>
                 </pre>
               </div>
 

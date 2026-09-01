@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   Shield,
@@ -16,7 +16,7 @@ import {
 import axios from "axios";
 import Role from "../../models/role";
 import Permission from "../../models/permission";
-import formatDate from "../../utils/datetimeformater";
+import { formatDate } from "../../utils/datetimeformater";
 
 function RoleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +39,7 @@ function RoleDetailPage() {
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setErrorMessage(
-            error.response?.data?.message || "Failed to load role details."
+            error.response?.data?.message || "Failed to load role details.",
           );
         } else {
           setErrorMessage("An unexpected error occurred.");
@@ -68,14 +68,13 @@ function RoleDetailPage() {
   };
 
   // Group permissions by module
-  const groupedPermissions = role?.permissions?.reduce<
-    Record<string, Permission[]>
-  >((acc, perm) => {
-    const mod = perm?.module || "General";
-    if (!acc[mod]) acc[mod] = [];
-    acc[mod].push(perm);
-    return acc;
-  }, {}) || {};
+  const groupedPermissions =
+    role?.permissions?.reduce<Record<string, Permission[]>>((acc, perm) => {
+      const mod = perm?.module || "General";
+      if (!acc[mod]) acc[mod] = [];
+      acc[mod].push(perm);
+      return acc;
+    }, {}) || {};
 
   return (
     <div className="w-full space-y-4 p-2">
@@ -129,7 +128,9 @@ function RoleDetailPage() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 flex flex-col items-center justify-center text-slate-500">
           <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
-          <span className="text-xs font-medium">Fetching role scope details...</span>
+          <span className="text-xs font-medium">
+            Fetching role scope details...
+          </span>
         </div>
       ) : errorMessage ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-xs text-rose-500 font-medium">
@@ -226,38 +227,43 @@ function RoleDetailPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {Object.entries(groupedPermissions).map(([moduleName, perms]) => (
-                  <div
-                    key={moduleName}
-                    className="bg-slate-50/50 rounded-xl border border-slate-200/80 p-3.5 space-y-2.5"
-                  >
-                    {/* Module Title Header */}
-                    <div className="flex items-center gap-2">
-                      <Layers size={13} className="text-indigo-600" />
-                      <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
-                        {moduleName}
-                      </span>
-                      <span className="text-[9px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.2 rounded-full font-bold">
-                        {perms.length}
-                      </span>
-                    </div>
+                {Object.entries(groupedPermissions).map(
+                  ([moduleName, perms]) => (
+                    <div
+                      key={moduleName}
+                      className="bg-slate-50/50 rounded-xl border border-slate-200/80 p-3.5 space-y-2.5"
+                    >
+                      {/* Module Title Header */}
+                      <div className="flex items-center gap-2">
+                        <Layers size={13} className="text-indigo-600" />
+                        <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+                          {moduleName}
+                        </span>
+                        <span className="text-[9px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.2 rounded-full font-bold">
+                          {perms.length}
+                        </span>
+                      </div>
 
-                    {/* Permissions Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                      {perms.map((perm) => (
-                        <div
-                          key={perm.id}
-                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-700 text-xs shadow-2xs"
-                        >
-                          <KeyRound size={11} className="text-indigo-500 shrink-0" />
-                          <span className="truncate font-medium text-[11px]">
-                            {perm.permissionName}
-                          </span>
-                        </div>
-                      ))}
+                      {/* Permissions Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
+                        {perms.map((perm) => (
+                          <div
+                            key={perm.id}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-700 text-xs shadow-2xs"
+                          >
+                            <KeyRound
+                              size={11}
+                              className="text-indigo-500 shrink-0"
+                            />
+                            <span className="truncate font-medium text-[11px]">
+                              {perm.permissionName}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </div>

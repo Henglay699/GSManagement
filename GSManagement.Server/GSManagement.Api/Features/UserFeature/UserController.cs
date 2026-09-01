@@ -9,7 +9,7 @@ namespace GSManagement.Api.Features.UserFeature;
 public class UserController(IUserService userService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PagedResult<UserResponse>>> GetUsers(
+    public async Task<ActionResult<PagedResult<UserResponse>>> GetAllUsersPagination(
         [FromQuery] int pageNumber,
         [FromQuery] int pageSize,
         [FromQuery] string? searchTerm,
@@ -19,6 +19,15 @@ public class UserController(IUserService userService) : ControllerBase
             pageNumber, pageSize, searchTerm, ct);
 
         return Ok(results.Value);
+    }
+
+    [HttpGet("select-options")]
+    public async Task<ActionResult<PagedResult<UserResponse>>> GetAllUsersData(
+        CancellationToken ct)
+    {
+        var results = await userService.GetUsersDataAsync(ct);
+
+        return Ok(results);
     }
 
     [HttpGet("{id}")]

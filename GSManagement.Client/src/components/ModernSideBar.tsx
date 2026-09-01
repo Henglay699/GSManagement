@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ShieldCheck,
   UserCheck,
   Shield,
   Clock,
@@ -17,6 +16,8 @@ import {
   KeyRound,
   Activity,
 } from "lucide-react";
+
+import logo from "../assets/logo.png";
 
 interface SubMenuItem {
   text: string;
@@ -94,12 +95,14 @@ export default function ModernSideBar() {
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     "User Management": false,
   });
+
   const toggleSubmenu = (text: string) => {
     setOpenSubmenus((prev) => ({
       ...prev,
       [text]: !prev[text],
     }));
   };
+
   const location = useLocation();
 
   const menuItems: MenuItem[] = [
@@ -135,12 +138,12 @@ export default function ModernSideBar() {
       children: [
         {
           text: "Dashboard",
-          path: "/attendance",
+          path: "/attendance/dashboard",
           icon: <Activity size={20} />,
         },
         {
           text: "Leave",
-          path: "/leave",
+          path: "/leaves",
           icon: <Clock10Icon size={20} />,
         },
       ],
@@ -159,7 +162,6 @@ export default function ModernSideBar() {
         collapsed ? "w-16 px-2" : "w-65 px-3"
       }`}
     >
-      {/* Top Section */}
       <div>
         {/* Header & Logo */}
         <div
@@ -167,18 +169,27 @@ export default function ModernSideBar() {
             collapsed ? "justify-center flex-col gap-3" : "justify-between"
           }`}
         >
-          <div className="flex items-center gap-2.5">
-            <div className="bg-indigo-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
-              <ShieldCheck size={20} />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-11 h-11 overflow-hidden shrink-0 flex items-center justify-start">
+              <img
+                src={logo}
+                alt="Grateful Solutions"
+                className="h-full w-auto max-w-none object-cover object-left"
+              />
             </div>
+
             {!collapsed && (
-              <span className="font-bold text-base text-slate-800 tracking-tight whitespace-nowrap">
-                GS Admin
-              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-sm text-slate-800 tracking-tight whitespace-nowrap leading-tight">
+                  Grateful Solutions
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap leading-none mt-0.5">
+                  Cambodia Co., Ltd
+                </span>
+              </div>
             )}
           </div>
 
-          {/* Toggle Button */}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0"
@@ -191,13 +202,11 @@ export default function ModernSideBar() {
         {/* Navigation Links */}
         <nav className="mt-4 space-y-1">
           {menuItems.map((item) => {
-            // Check if item has children (dropdown)
             if (item.children) {
               const hasActiveChild = isChildActive(item.children);
               const isOpen = !!openSubmenus[item.text];
               return (
                 <div key={item.text} className="space-y-1">
-                  {/* Parent Button */}
                   <button
                     onClick={() => {
                       if (collapsed) setCollapsed(false);
@@ -236,7 +245,6 @@ export default function ModernSideBar() {
                     )}
                   </button>
 
-                  {/* Sub-menu items */}
                   {!collapsed && isOpen && (
                     <div className="pl-6 space-y-1 border-l-2 border-slate-100 ml-4">
                       {item.children.map((child) => (
@@ -255,7 +263,6 @@ export default function ModernSideBar() {
               );
             }
 
-            // Standard Single Link
             return (
               <SidebarItem
                 key={item.text}

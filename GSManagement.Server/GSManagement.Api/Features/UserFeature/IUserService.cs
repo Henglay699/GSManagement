@@ -11,4 +11,6 @@ public interface IUserService
     Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken);
     Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, int Id, CancellationToken cancellationToken);
     Task<Result<bool>> DeleteUserAsync(int? Id, CancellationToken cancellationToken);
+
+    Task<List<UsersSelectionRespone>> GetUsersDataAsync(CancellationToken ct);
 }

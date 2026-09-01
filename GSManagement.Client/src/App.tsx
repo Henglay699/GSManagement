@@ -9,6 +9,9 @@ import UpdateRolePage from "./pages/role/UpdateRolePage";
 import RoleDetailPage from "./pages/role/RoleDetailPage";
 import PermissionPage from "./pages/permission/PermissionPage";
 import PermissionDetailPage from "./pages/permission/PermissionDetailPage";
+import UserDetailPage from "./pages/user/UserDetailPage";
+import AttendancePage from "./pages/attendance/AttendancePage";
+import LeavePage from "./pages/leave/LeavePage";
 
 function App() {
   return (
@@ -21,6 +24,7 @@ function App() {
         <Routes>
           <Route index element={<UserPage />} />
           <Route path="/users" element={<UserPage />} />
+          <Route path="/user/detail/:id" element={<UserDetailPage />} />
           <Route path="/user/create" element={<CreateUserPage />} />
           <Route path="/user/update/:id" element={<UpdateUserPage />} />
 
@@ -34,6 +38,11 @@ function App() {
             path="/permission/detail/:id"
             element={<PermissionDetailPage />}
           />
+
+          <Route path="/attendance/dashboard" element={<AttendancePage />} />
+
+
+          <Route path="/leaves" element={<LeavePage />} />
         </Routes>
       </main>
     </div>

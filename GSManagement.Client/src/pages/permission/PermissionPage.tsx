@@ -15,7 +15,7 @@ import {
 import axios from "axios";
 import Permission from "../../models/permission";
 import { fetchPermissions } from "../../services/permissionservice";
-import formatDate from "../../utils/datetimeformater";
+import { formatDate } from "../../utils/datetimeformater";
 
 function PermissionPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -250,7 +250,7 @@ function PermissionPage() {
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
                         <Link
                           to={`/permission/detail/${perm.id}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors text-xs font-medium"
+                          className="!no-underline inline-flex items-center gap-1 px-2.5 py-1 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors text-xs font-medium"
                           title="View Details"
                         >
                           <Eye size={14} />
