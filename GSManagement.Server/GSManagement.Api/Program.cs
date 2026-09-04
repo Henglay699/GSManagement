@@ -29,7 +29,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddDbContext<GSDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add application services
 builder.Services.AddApplicationServices();

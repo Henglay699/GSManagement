@@ -20,24 +20,14 @@ internal class UserConfig : IEntityTypeConfiguration<User>
                .HasMaxLength(60);
 
         // user-role
-        builder.HasMany(u => u.Roles).WithMany(r => r.Users)
-               .UsingEntity<UserRole>(
-                j => j
-                .HasOne(ur => ur.Role)
-                .WithMany().HasForeignKey(ur => ur.RoleId),
+       // UserConfig.cs
+builder.HasMany(u => u.Roles)
+       .WithMany(r => r.Users)
+       .UsingEntity<UserRole>(
+           j => j.ToTable("UserRoles")
+       );
 
-                j => j
-                .HasOne(u => u.User)
-                .WithMany().HasForeignKey(ur => ur.UserId),
-
-                j =>
-                {
-                    j.ToTable("UserRoles");
-
-                    j.HasKey(x => new { x.UserId, x.RoleId });
-                });
-
-        //user-refreshtoken
+        // user-refreshtoken
         builder.HasMany(u => u.RefreshTokens)
                .WithOne(rt => rt.User)
                .HasForeignKey(rt => rt.UserId)

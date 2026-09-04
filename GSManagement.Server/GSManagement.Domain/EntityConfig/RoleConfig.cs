@@ -18,24 +18,11 @@ internal class RoleConfig : IEntityTypeConfiguration<Role>
                .IsRequired()
                .HasMaxLength(60);
 
-        builder.HasMany(r => r.Permissions).WithMany(r => r.Roles)
+        // RoleConfig.cs
+        builder.HasMany(r => r.Permissions)
+               .WithMany(p => p.Roles)
                .UsingEntity<RolePermission>(
-
-                j => j
-                .HasOne(ur => ur.Permission)
-                .WithMany().HasForeignKey(ur => ur.PermissionId),
-                j => j
-                .HasOne(u => u.Role)
-                .WithMany().HasForeignKey(ur => ur.RoleId),
-
-
-                j =>
-                {
-                    j.ToTable("RolePermissions");
-
-                    j.HasKey(x => new { x.RoleId, x.PermissionId });
-                });
-
+                   j => j.ToTable("RolePermissions")
+               );
     }
-
 }

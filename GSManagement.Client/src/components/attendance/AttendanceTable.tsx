@@ -41,7 +41,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   selectedDate,
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+    <div className="bg-gray-100 rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse border border-slate-200 min-w-[950px]">
           <thead>
@@ -138,7 +138,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                           {/* Priority: Holiday Badge -> Day Off -> Attendance Status -> Empty */}
                           {day.isHoliday ? (
                             <span
-                              className="block text-[11px] text-amber-800 font-normal truncate max-w-[160px] bg-amber-100/80 border border-amber-200 px-1.5 py-0.5 rounded-md"
+                              className="block text-[11px] text-amber-800 font-normal truncate max-w-[110px] bg-amber-100/80 border border-amber-200 px-1.5 py-0.5 rounded-md"
                               title={day.holidayName}
                             >
                               {day.holidayName || "Holiday"}
