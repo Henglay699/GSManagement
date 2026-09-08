@@ -8,4 +8,5 @@ public interface IAttendanceService
     Task<AttendanceGridResponseDto> GetWeeklyAttendanceGridAsync(DateOnly selectedDate, AttendanceStatus? statusFilter);
     Task<AttendanceRecordDto?> GetByIdAsync(int id);
     Task<AttendanceRecordDto> CreateAsync(CreateAttendanceDto dto);
+    Task<UserAttendanceDetailDto?> GetUserAttendanceDetailAsync(int userId, int year, int month);
 }

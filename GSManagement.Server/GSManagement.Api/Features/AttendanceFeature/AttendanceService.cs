@@ -11,7 +11,8 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
 {
     private readonly GSDbContext _context = context;
 
-    public async Task<AttendanceGridResponseDto> GetWeeklyAttendanceGridAsync(DateOnly selectedDate, AttendanceStatus? statusFilter)
+    public async Task<AttendanceGridResponseDto> GetWeeklyAttendanceGridAsync(DateOnly selectedDate,
+    AttendanceStatus? statusFilter)
     {
         int dayOfWeekOffset = ((int)selectedDate.DayOfWeek + 6) % 7;
         DateOnly monday = selectedDate.AddDays(-dayOfWeekOffset);
@@ -147,5 +148,97 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             Status = attendance.Status,
             Remark = attendance.Remark
         };
+    }
+
+    // -------------------------------------------------------------------
+    // New: user attendance detail (profile + full-month summary + records)
+    // -------------------------------------------------------------------
+
+    public async Task<UserAttendanceDetailDto?> GetUserAttendanceDetailAsync(int userId, int year, int month)
+    {
+        var user = await _context.Users
+            .Include(u => u.Roles)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        var firstDayOfMonth = new DateOnly(year, month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+
+        var monthAttendance = await _context.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                a.UserId == userId &&
+                a.Date >= firstDayOfMonth &&
+                a.Date <= lastDayOfMonth)
+            .OrderBy(a => a.Date)
+            .ToListAsync();
+
+        // Summary always reflects the FULL month - it must not depend on
+        // whichever single date the frontend has selected on the calendar.
+        var summary = new MonthlyAttendanceSummaryDto
+        {
+            Present = monthAttendance.Count(a => a.Status == AttendanceStatus.OnTime),
+            Late = monthAttendance.Count(a => a.Status == AttendanceStatus.Late),
+            Absent = monthAttendance.Count(a => a.Status == AttendanceStatus.Absent),
+            Leave = monthAttendance.Count(a => a.Status == AttendanceStatus.Leave),
+        };
+
+        var records = monthAttendance.Select(a => new DayAttendanceRecordDto
+        {
+            Date = a.Date,
+            CheckInTime = FormatTime(a.CheckInTime),
+            CheckOutTime = FormatTime(a.CheckOutTime),
+            TotalHour = a.TotalHour.HasValue
+                ? $"{(int)a.TotalHour.Value}h {(int)((a.TotalHour.Value % 1) * 60)}m"
+                : null,
+            Status = a.Status,
+            Remark = a.Remark,
+        }).ToList();
+
+        var department = user.Roles is { Count: > 0 }
+            ? string.Join(", ", user.Roles.Select(r => r.RoleName))
+            : null;
+
+        // Same helper the weekly grid already uses - no cross-year spillover
+        // needed here since firstDayOfMonth/lastDayOfMonth always fall in `year`.
+        var yearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(year);
+        var monthHolidays = yearHolidays
+            .Where(h =>
+            {
+                var holidayDate = DateOnly.FromDateTime(h.Date);
+                return holidayDate >= firstDayOfMonth && holidayDate <= lastDayOfMonth;
+            })
+            .Select(h => new HolidayInfoDto
+            {
+                Date = DateOnly.FromDateTime(h.Date),
+                Name = h.KhmerName ?? h.EnglishName ?? "Public Holiday",
+            })
+            .ToList();
+
+        return new UserAttendanceDetailDto
+        {
+            User = new AttendanceUserSummaryDto
+            {
+                Id = user.Id,
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                Department = department,
+                AvatarUrl = user.ImageUrl,
+            },
+            Summary = summary,
+            Records = records,
+            Holidays = monthHolidays,
+        };
+    }
+
+    // TimeOnly -> "08:12 AM" (matches the format the React timeline parses)
+    private static string? FormatTime(TimeOnly? time)
+    {
+        return time?.ToString("hh:mm tt");
     }
 }

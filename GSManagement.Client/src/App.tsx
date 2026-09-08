@@ -12,15 +12,16 @@ import PermissionDetailPage from "./pages/permission/PermissionDetailPage";
 import UserDetailPage from "./pages/user/UserDetailPage";
 import AttendancePage from "./pages/attendance/AttendancePage";
 import LeavePage from "./pages/leave/LeavePage";
+import UserAttendanceDetailPage from "./pages/attendance/AttendanceDetailPage";
 
 function App() {
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Render the actual Sidebar component */}
+    <div className="flex h-screen bg-slate-50 dark:bg-[#0b0c0e] text-slate-900 dark:text-zinc-100 overflow-hidden">
+      {/* Sidebar */}
       <ModernSideBar />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 min-w-0 h-screen overflow-y-auto p-3">
+      <main className="flex-1 min-w-0 h-screen overflow-y-auto p-4 bg-slate-50 dark:bg-[#0b0c0e]">
         <Routes>
           <Route index element={<UserPage />} />
           <Route path="/users" element={<UserPage />} />
@@ -40,8 +41,10 @@ function App() {
           />
 
           <Route path="/attendance/dashboard" element={<AttendancePage />} />
-
-
+          <Route
+            path="/attendance/user/:id"
+            element={<UserAttendanceDetailPage />}
+          />
           <Route path="/leaves" element={<LeavePage />} />
         </Routes>
       </main>

@@ -1,10 +1,11 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { StatusBadge, AttendanceStatusValue } from "./StatusBadge";
 
 export interface AttendanceRecord {
   id: number;
   userId: number;
-  date: string; // "YYYY-MM-DD"
+  date: string;
   checkInTime?: string;
   checkOutTime?: string;
   totalHour?: number | string;
@@ -31,7 +32,7 @@ interface AttendanceTableProps {
   employees: Employee[];
   attendanceData: AttendanceRecord[];
   weekDates: WeekDayInfo[];
-  selectedDate: string; // <-- Added to highlight selected weekday column
+  selectedDate: string;
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({
@@ -41,12 +42,12 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   selectedDate,
 }) => {
   return (
-    <div className="bg-gray-100 rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+    <div className="bg-gray-100 dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-2xs">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse border border-slate-200 min-w-[950px]">
+        <table className="w-full text-left border-collapse border border-slate-200 dark:border-zinc-800 min-w-[950px]">
           <thead>
-            <tr className="bg-slate-50/50 text-slate-700 border-b border-slate-300">
-              <th className="p-3.5 border-r border-slate-200 text-xs font-semibold w-52">
+            <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-slate-700 dark:text-zinc-300 border-b border-slate-300 dark:border-zinc-800">
+              <th className="p-3.5 border-r border-slate-200 dark:border-zinc-800 text-xs font-semibold w-52">
                 Employee
               </th>
               {weekDates.map((day) => {
@@ -54,16 +55,16 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                 return (
                   <th
                     key={day.dateString}
-                    className={`p-3.5 border-r border-slate-300 text-xs font-semibold min-w-[125px] last:border-r-0 transition-colors ${
+                    className={`p-3.5 border-r border-slate-300 dark:border-zinc-800 text-xs font-semibold min-w-[125px] last:border-r-0 transition-colors ${
                       isSelected
-                        ? "bg-indigo-100/60 text-indigo-900 border-x-2 border-x-indigo-400"
+                        ? "bg-indigo-100/60 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-300 border-x-2 border-x-indigo-400"
                         : ""
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span>{day.dayName}</span>
                       {isSelected && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                       )}
                     </div>
                   </th>
@@ -72,26 +73,33 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-300 text-xs">
+          <tbody className="divide-y divide-slate-300 dark:divide-zinc-800 text-xs">
             {employees.map((emp) => (
-              <tr key={emp.id} className="hover:bg-slate-50/30">
-                {/* Employee Profile Cell */}
-                <td className="p-3.5 border-r border-slate-300 align-top">
-                  <div className="flex items-center gap-3">
+              <tr
+                key={emp.id}
+                className="hover:bg-slate-50/30 dark:hover:bg-zinc-800/30"
+              >
+                {/* Employee Profile Cell - links to the attendance detail page */}
+                <td className="p-3.5 border-r border-slate-300 dark:border-zinc-800 align-top">
+                  <Link
+                    to={`/attendance/user/${emp.id}`}
+                    className="!no-underline flex items-center gap-3 group"
+                    title={`View ${emp.name}'s attendance details`}
+                  >
                     <img
                       src={emp.avatar}
                       alt={emp.name}
-                      className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                      className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-zinc-700 shrink-0"
                     />
                     <div className="overflow-hidden">
-                      <h4 className="font-bold text-slate-800 text-xs truncate">
+                      <h4 className="font-bold text-slate-800 dark:text-zinc-200 text-xs truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {emp.name}
                       </h4>
-                      <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                      <p className="text-[11px] text-slate-600 dark:text-zinc-400 truncate mt-0.5">
                         {emp.role}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 </td>
 
                 {/* Week Day Grid Cells */}
@@ -101,16 +109,16 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                       att.userId === emp.id && att.date === day.dateString,
                   );
                   const isSelected = day.dateString === selectedDate;
-                  const isSunday = day.dayName === "Sunday"; // Check for Day Off
+                  const isSunday = day.dayName === "Sunday";
 
                   return (
                     <td
                       key={day.dateString}
-                      className={`p-3 border-r border-slate-200 align-top last:border-r-0 transition-colors ${
-                        isSunday ? "bg-slate-100/50" : "" // Subtle shading for Sunday
+                      className={`p-3 border-r border-slate-200 dark:border-zinc-800 align-top last:border-r-0 transition-colors ${
+                        isSunday ? "bg-slate-100/50 dark:bg-zinc-800/30" : ""
                       } ${
                         isSelected
-                          ? "bg-indigo-50/40 border-x-2 border-x-indigo-400"
+                          ? "bg-indigo-50/40 dark:bg-indigo-950/30 border-x-2 border-x-indigo-400"
                           : ""
                       }`}
                     >
@@ -119,15 +127,15 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                           <span
                             className={`font-semibold text-xs ${
                               isSelected
-                                ? "text-indigo-700 font-bold"
-                                : "text-slate-700"
+                                ? "text-indigo-700 dark:text-indigo-400 font-bold"
+                                : "text-slate-700 dark:text-zinc-300"
                             }`}
                           >
                             {day.dayNumber}
                           </span>
 
                           {day.isHoliday && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-700 px-1.5 py-0.5 rounded-md shrink-0">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-md shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                               <span>Holiday</span>
                             </span>
@@ -135,16 +143,15 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                         </div>
 
                         <div>
-                          {/* Priority: Holiday Badge -> Day Off -> Attendance Status -> Empty */}
                           {day.isHoliday ? (
                             <span
-                              className="block text-[11px] text-amber-800 font-normal truncate max-w-[110px] bg-amber-100/80 border border-amber-200 px-1.5 py-0.5 rounded-md"
+                              className="block text-[12px] text-amber-800 dark:text-amber-300 font-normal truncate max-w-[110px] bg-amber-100/80 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded-md"
                               title={day.holidayName}
                             >
                               {day.holidayName || "Holiday"}
                             </span>
                           ) : isSunday ? (
-                            <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                            <span className="inline-flex items-center text-[11px] font-medium text-slate-500 dark:text-zinc-400 bg-slate-200/60 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
                               Day Off
                             </span>
                           ) : record ? (
@@ -153,7 +160,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                               totalHour={record.totalHour}
                             />
                           ) : (
-                            <span className="inline-flex items-center text-[11px] font-medium text-slate-400 bg-slate-100/70 border border-slate-200/60 px-2 py-0.5 rounded-md"></span>
+                            <span className="inline-flex items-center text-[11px] font-medium text-slate-400 dark:text-zinc-500 bg-slate-100/70 dark:bg-zinc-800/70 border border-slate-200/60 dark:border-zinc-700/60 px-2 py-0.5 rounded-md"></span>
                           )}
                         </div>
                       </div>

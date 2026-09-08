@@ -50,10 +50,14 @@ function toArray<T>(data: unknown): T[] {
 }
 
 const STATUS_STYLES: Record<LeaveStatus, string> = {
-  Pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  Approved: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  Reject: "bg-rose-50 text-rose-700 ring-rose-600/20",
-  Cancel: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  Pending:
+    "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-800/50",
+  Approved:
+    "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-800/50",
+  Reject:
+    "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-800/50",
+  Cancel:
+    "bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 ring-slate-500/20 dark:ring-zinc-700/50",
 };
 
 const LEAVE_TYPES: LeaveType[] = ["Sick", "Maternity", "Emergency", "Personal"];
@@ -186,30 +190,30 @@ export default function LeaveRequestsPage() {
         <div className="flex items-center gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold text-slate-900">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
                 Leave requests
               </h1>
               {pendingCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/40 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
                   {pendingCount} pending
                 </span>
               )}
             </div>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-zinc-400">
               Review employee leave and create requests on their behalf.
             </p>
           </div>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 dark:bg-zinc-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:hover:bg-zinc-600"
         >
           <Plus size={16} /> New leave request
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-6 border-b border-slate-200">
+      <div className="mb-6 flex gap-6 border-b border-slate-200 dark:border-zinc-800">
         <button
           onClick={() => {
             setActiveTab("pending");
@@ -217,13 +221,13 @@ export default function LeaveRequestsPage() {
           }}
           className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors ${
             activeTab === "pending"
-              ? "border-b-2 border-slate-900 text-slate-900"
-              : "border-b-2 border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-b-2 border-slate-900 dark:border-zinc-100 text-slate-900 dark:text-zinc-100"
+              : "border-b-2 border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200"
           }`}
         >
           <span>Requires Action</span>
           {pendingCount > 0 && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
               {pendingCount}
             </span>
           )}
@@ -235,8 +239,8 @@ export default function LeaveRequestsPage() {
           }}
           className={`pb-3 text-sm font-medium transition-colors ${
             activeTab === "history"
-              ? "border-b-2 border-slate-900 text-slate-900"
-              : "border-b-2 border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-b-2 border-slate-900 dark:border-zinc-100 text-slate-900 dark:text-zinc-100"
+              : "border-b-2 border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200"
           }`}
         >
           Leave History
@@ -248,7 +252,7 @@ export default function LeaveRequestsPage() {
         <div className="relative">
           <Search
             size={16}
-            className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400"
+            className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400 dark:text-zinc-500"
           />
           <input
             value={search}
@@ -257,7 +261,7 @@ export default function LeaveRequestsPage() {
               setSearch(e.target.value);
             }}
             placeholder="Search employee..."
-            className="rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm outline-none focus:border-slate-400"
+            className="rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 py-2 pl-8 pr-3 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500"
           />
         </div>
 
@@ -269,7 +273,7 @@ export default function LeaveRequestsPage() {
                 setPageNumber(1);
                 setStatusFilter(e.target.value as LeaveStatus | "");
               }}
-              className="rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none focus:border-slate-400"
+              className="rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 py-2 px-3 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
             >
               <option value="">All History</option>
               <option value="Approved">Approved</option>
@@ -277,7 +281,7 @@ export default function LeaveRequestsPage() {
               <option value="Cancel">Cancelled</option>
             </select>
 
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
               <input
                 type="date"
                 value={fromDate}
@@ -285,7 +289,7 @@ export default function LeaveRequestsPage() {
                   setPageNumber(1);
                   setFromDate(e.target.value);
                 }}
-                className="rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none focus:border-slate-400"
+                className="rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 py-2 px-3 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
                 aria-label="From date"
               />
               <span>to</span>
@@ -297,7 +301,7 @@ export default function LeaveRequestsPage() {
                   setPageNumber(1);
                   setToDate(e.target.value);
                 }}
-                className="rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none focus:border-slate-400"
+                className="rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 py-2 px-3 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
                 aria-label="To date"
               />
             </div>
@@ -317,7 +321,7 @@ export default function LeaveRequestsPage() {
                 setToDate(getLastDayOfMonthString());
               }
             }}
-            className="text-sm text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+            className="text-sm text-slate-500 dark:text-zinc-400 underline-offset-2 hover:text-slate-700 dark:hover:text-zinc-200 hover:underline"
           >
             Clear filters
           </button>
@@ -325,15 +329,15 @@ export default function LeaveRequestsPage() {
       </div>
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
           <AlertCircle size={16} /> {error}
         </div>
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-800">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-zinc-800 text-sm">
+          <thead className="bg-slate-50 dark:bg-zinc-800/50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">
             <tr>
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Type</th>
@@ -346,12 +350,12 @@ export default function LeaveRequestsPage() {
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
             {loading ? (
               <tr>
                 <td
                   colSpan={activeTab === "pending" ? 7 : 6}
-                  className="px-4 py-10 text-center text-slate-400"
+                  className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
                 >
                   <Loader2 className="mx-auto animate-spin" size={18} />
                 </td>
@@ -360,26 +364,26 @@ export default function LeaveRequestsPage() {
               <tr>
                 <td
                   colSpan={activeTab === "pending" ? 7 : 6}
-                  className="px-4 py-10 text-center text-slate-400"
+                  className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
                 >
                   No leave requests found.
                 </td>
               </tr>
             ) : (
               requests.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/60">
-                  <td className="px-4 py-3 font-medium text-slate-800">
+                <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/40">
+                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-zinc-200">
                     {r.userName}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{r.leaveType}</td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">{r.leaveType}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
                     {r.startDate} → {r.endDate}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{r.totalDays}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">{r.totalDays}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={r.status} />
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-slate-500">
+                  <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-zinc-400">
                     {r.remark || "—"}
                   </td>
                   {activeTab === "pending" && (
@@ -388,14 +392,14 @@ export default function LeaveRequestsPage() {
                         <button
                           disabled={actioningId === r.id}
                           onClick={() => handleAction(r.id, "Approved")}
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 disabled:opacity-50"
                         >
                           <Check size={14} /> Approve
                         </button>
                         <button
                           disabled={actioningId === r.id}
                           onClick={() => handleAction(r.id, "Reject")}
-                          className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-md bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/70 disabled:opacity-50"
                         >
                           <X size={14} /> Reject
                         </button>
@@ -410,7 +414,7 @@ export default function LeaveRequestsPage() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+      <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-zinc-400">
         <span>
           Page {pageNumber} of {totalPages} · {totalCount} total
         </span>
@@ -418,14 +422,14 @@ export default function LeaveRequestsPage() {
           <button
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => p - 1)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 disabled:opacity-40 hover:bg-slate-50"
+            className="rounded-md border border-slate-200 dark:border-zinc-700 px-3 py-1.5 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-zinc-800"
           >
             Prev
           </button>
           <button
             disabled={pageNumber >= totalPages || totalPages === 0}
             onClick={() => setPageNumber((p) => p + 1)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 disabled:opacity-40 hover:bg-slate-50"
+            className="rounded-md border border-slate-200 dark:border-zinc-700 px-3 py-1.5 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-zinc-800"
           >
             Next
           </button>
@@ -530,27 +534,27 @@ function CreateLeaveRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-        <h2 className="mb-4 text-base font-semibold text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 p-5 shadow-xl border border-transparent dark:border-zinc-800">
+        <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-zinc-100">
           Create leave request
         </h2>
 
         {error && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
             <AlertCircle size={16} /> {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
               Employee
             </label>
             <select
               value={form.userId}
               onChange={(e) => setForm({ ...form, userId: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+              className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
             >
               <option value="">Select employee...</option>
               {employees.map((u) => (
@@ -563,7 +567,7 @@ function CreateLeaveRequestModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
                 Leave type
               </label>
               <select
@@ -571,7 +575,7 @@ function CreateLeaveRequestModal({
                 onChange={(e) =>
                   setForm({ ...form, leaveType: e.target.value as LeaveType })
                 }
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
               >
                 {LEAVE_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -581,7 +585,7 @@ function CreateLeaveRequestModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
                 Set status to
               </label>
               <select
@@ -593,7 +597,7 @@ function CreateLeaveRequestModal({
                       .value as CreateFormState["initialStatus"],
                   })
                 }
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
               >
                 <option value="Pending">Pending</option>
                 <option value="Approved">Approved (skip review)</option>
@@ -603,7 +607,7 @@ function CreateLeaveRequestModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
                 Start date
               </label>
               <input
@@ -612,31 +616,31 @@ function CreateLeaveRequestModal({
                 onChange={(e) =>
                   setForm({ ...form, startDate: e.target.value })
                 }
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
                 End date
               </label>
               <input
                 type="date"
                 value={form.endDate}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
               Remark (optional)
             </label>
             <textarea
               value={form.remark}
               onChange={(e) => setForm({ ...form, remark: e.target.value })}
               rows={2}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+              className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500"
               placeholder="Reason or context for this leave..."
             />
           </div>
@@ -645,14 +649,14 @@ function CreateLeaveRequestModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+              className="rounded-lg bg-slate-900 dark:bg-zinc-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:hover:bg-zinc-600 disabled:opacity-50"
             >
               {submitting ? "Creating..." : "Create request"}
             </button>

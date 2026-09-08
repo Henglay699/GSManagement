@@ -50,8 +50,8 @@ function UpdateUserPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
+      <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-zinc-400">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-2" />
         <span className="text-sm">Loading user details...</span>
       </div>
     );
@@ -59,7 +59,7 @@ function UpdateUserPage() {
 
   if (errorMessage) {
     return (
-      <div className="py-20 text-center text-sm font-medium text-rose-500">
+      <div className="py-20 text-center text-sm font-medium text-rose-500 dark:text-rose-400">
         {errorMessage}
       </div>
     );

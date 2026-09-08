@@ -46,4 +46,42 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
         }
     }
 
+    // GET /api/attendance/user/5?month=2026-09
+    // Powers UserAttendanceDetailPage.tsx: user profile + full-month summary
+    // + day-by-day check-in/check-out records.
+    [HttpGet("user/{id:int}")]
+    public async Task<IActionResult> GetUserAttendanceDetail(int id, [FromQuery] string month)
+    {
+        if (!TryParseMonth(month, out var year, out var monthNumber))
+        {
+            return BadRequest(new { message = "Query parameter 'month' must be in 'yyyy-MM' format." });
+        }
+
+        var result = await _attendanceService.GetUserAttendanceDetailAsync(id, year, monthNumber);
+
+        return result is null
+            ? NotFound(new { message = $"User with id {id} was not found." })
+            : Ok(result);
+    }
+
+    private static bool TryParseMonth(string? month, out int year, out int monthNumber)
+    {
+        year = 0;
+        monthNumber = 0;
+
+        if (string.IsNullOrWhiteSpace(month))
+        {
+            return false;
+        }
+
+        var parts = month.Split('-');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        return int.TryParse(parts[0], out year)
+            && int.TryParse(parts[1], out monthNumber)
+            && monthNumber is >= 1 and <= 12;
+    }
 }

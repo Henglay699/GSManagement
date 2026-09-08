@@ -20,7 +20,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// API Response DTO Interfaces
 interface WeekDayInfoDto {
   dayName: string;
   dayNumber: number;
@@ -29,9 +28,6 @@ interface WeekDayInfoDto {
   holidayName?: string;
 }
 
-// Matches GSManagement.Domain.Entities.Enums.AttendanceStatus. The API
-// serializes enums as their string name (JsonStringEnumConverter in
-// Program.cs), so this comes through as "OnTime" etc., not 0/1/2/3.
 type AttendanceStatusValue = "OnTime" | "Late" | "Leave" | "Absent";
 
 interface AttendanceRecordDto {
@@ -100,7 +96,6 @@ export function AttendancePage() {
 
       const data = response.data;
 
-      // 1. Map WeekDates
       const mappedWeekDates: WeekDayInfo[] = data.weekDates.map((w) => ({
         dayName: w.dayName,
         dayNumber: w.dayNumber,
@@ -109,7 +104,6 @@ export function AttendancePage() {
         holidayName: w.holidayName,
       }));
 
-      // 2. Map Employees
       const mappedEmployees: Employee[] = data.employees.map((e) => ({
         id: e.id,
         name: e.name,
@@ -117,7 +111,6 @@ export function AttendancePage() {
         avatar: e.avatar || `https://i.pravatar.cc/150?u=${e.id}`,
       }));
 
-      // 3. Flatten All Attendance Records
       const mappedAttendance: AttendanceRecord[] = data.employees.flatMap((e) =>
         e.attendance.map((a) => ({
           id: a.id,
@@ -151,13 +144,11 @@ export function AttendancePage() {
     fetchAttendanceGrid();
   }, [fetchAttendanceGrid]);
 
-  // Reset pagination on search or date/filter changes
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [searchQuery, selectedDate, statusFilter]);
 
-  // Filter employees by search query
   const filteredEmployees = useMemo(() => {
     if (!searchQuery.trim()) return employees;
     return employees.filter((emp) =>
@@ -165,7 +156,6 @@ export function AttendancePage() {
     );
   }, [employees, searchQuery]);
 
-  // Paginated employee slice
   const paginatedEmployees = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredEmployees.slice(startIndex, startIndex + pageSize);
@@ -173,7 +163,6 @@ export function AttendancePage() {
 
   const totalPages = Math.ceil(filteredEmployees.length / pageSize) || 1;
 
-  // Compute stat totals based on current selected date
   const stats = useMemo(() => {
     const selectedDateRecords = attendanceData.filter(
       (a) => a.date === selectedDate,
@@ -203,110 +192,114 @@ export function AttendancePage() {
   }, [attendanceData, selectedDate, employees]);
 
   return (
-    <div className="max-w-[1400px] mx-auto p-3 space-y-3">
+    <div className="w-full space-y-4 text-slate-800 dark:text-zinc-100">
       {/* Title Header */}
       <div>
-        <h1 className="text-base font-bold text-slate-900 leading-tight">
+        <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
           Employee Attendance
         </h1>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-slate-500 dark:text-zinc-400">
           Analyse attendance records of employee
         </p>
       </div>
 
-      {/* Compact Summary Statistics Cards */}
+      {/* Summary Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {/* Present Today */}
-        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <div className="p-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
               <CheckCircle2 size={13} />
             </div>
-            <span className="text-[11px] font-semibold text-slate-600">
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
               Present
             </span>
           </div>
           <div>
-            <div className="text-lg font-bold text-slate-900 leading-tight">
+            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
               {String(stats.present).padStart(2, "0")}
             </div>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
               {stats.remainingPeople} People Remaining
             </p>
           </div>
         </div>
 
         {/* Late Entry */}
-        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-amber-50 text-amber-600 border border-amber-100">
+            <div className="p-1 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">
               <Clock size={13} />
             </div>
-            <span className="text-[11px] font-semibold text-slate-600">
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
               Late Entry
             </span>
           </div>
           <div>
-            <div className="text-lg font-bold text-slate-900 leading-tight">
+            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
               {String(stats.late).padStart(2, "0")}
             </div>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
               {stats.present} People are on Time
             </p>
           </div>
         </div>
 
         {/* On Leave */}
-        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-purple-50 text-purple-600 border border-purple-100">
+            <div className="p-1 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50">
               <Coffee size={13} />
             </div>
-            <span className="text-[11px] font-semibold text-slate-600">
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
               On Leave
             </span>
           </div>
           <div>
-            <div className="text-lg font-bold text-slate-900 leading-tight">
+            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
               {String(stats.leave).padStart(2, "0")}
             </div>
-            <p className="text-[10px] text-slate-400">Approved Leave</p>
+            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+              Approved Leave
+            </p>
           </div>
         </div>
 
         {/* Absent */}
-        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-rose-50 text-rose-600 border border-rose-100">
+            <div className="p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50">
               <XCircle size={13} />
             </div>
-            <span className="text-[11px] font-semibold text-slate-600">
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
               Absent
             </span>
           </div>
           <div>
-            <div className="text-lg font-bold text-slate-900 leading-tight">
+            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
               {String(stats.absent).padStart(2, "0")}
             </div>
-            <p className="text-[10px] text-slate-400">Without Informing</p>
+            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+              Without Informing
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Control Bar with Expanded Search Input */}
-      <div className="bg-white p-2 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+      {/* Control Bar */}
+      <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl border border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2 flex-wrap flex-1">
           {/* Date Input */}
           <div className="relative flex items-center">
             <CalendarIcon
               size={13}
-              className="absolute left-2.5 text-slate-400 pointer-events-none"
+              className="absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
             />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="pl-8 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-100/70 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              className="pl-8 pr-2 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             />
           </div>
 
@@ -314,12 +307,12 @@ export function AttendancePage() {
           <div className="relative flex items-center">
             <Filter
               size={12}
-              className="absolute left-2.5 text-slate-400 pointer-events-none"
+              className="absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-7 pr-7 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 hover:bg-slate-100/70 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none"
+              className="pl-7 pr-7 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none"
             >
               <option value="all">All Statuses</option>
               <option value="OnTime">On Time / Present</option>
@@ -333,14 +326,14 @@ export function AttendancePage() {
           <div className="relative flex items-center flex-1 min-w-[200px] max-w-xs">
             <Search
               size={12}
-              className="absolute left-2.5 text-slate-400 pointer-events-none"
+              className="absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
             />
             <input
               type="text"
               placeholder="Search employee by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full pl-7 pr-2.5 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
 
@@ -350,7 +343,7 @@ export function AttendancePage() {
                 setStatusFilter("all");
                 setSearchQuery("");
               }}
-              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 transition-colors px-1.5 py-0.5"
+              className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 transition-colors px-1.5 py-0.5"
             >
               <RotateCcw size={11} />
               Reset Filters
@@ -359,7 +352,7 @@ export function AttendancePage() {
         </div>
 
         {loading && (
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 pr-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400 pr-2">
             <Loader2 size={13} className="animate-spin" />
             Loading grid...
           </div>
@@ -368,13 +361,13 @@ export function AttendancePage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="p-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[11px] font-medium">
+        <div className="p-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-lg text-[11px] font-medium">
           {error}
         </div>
       )}
 
-      {/* Non-scrollable Table Grid displaying current page slice */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+      {/* Table Grid */}
+      <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xs overflow-hidden">
         <AttendanceTable
           employees={paginatedEmployees}
           attendanceData={attendanceData}
@@ -383,8 +376,8 @@ export function AttendancePage() {
         />
 
         {/* Pagination Footer */}
-        <div className="px-3 py-2 bg-slate-50/70 border-t border-slate-200 flex items-center justify-between text-[11px]">
-          <div className="flex items-center gap-2 text-slate-500 font-medium">
+        <div className="px-3 py-2 bg-slate-50/70 dark:bg-zinc-800/70 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-zinc-400 font-medium">
             <span>Rows per page:</span>
             <select
               value={pageSize}
@@ -392,7 +385,7 @@ export function AttendancePage() {
                 setPageSize(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="bg-white border border-slate-200 rounded px-1.5 py-0.5 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              className="bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded px-1.5 py-0.5 font-semibold text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -412,18 +405,18 @@ export function AttendancePage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-1 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Previous Page"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="px-2 font-semibold text-slate-700">
+            <span className="px-2 font-semibold text-slate-700 dark:text-zinc-300">
               {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-1 rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Next Page"
             >
               <ChevronRight size={14} />

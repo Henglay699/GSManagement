@@ -47,24 +47,24 @@ function CreateRolePage() {
       <div className="flex items-center gap-3 px-1">
         <Link
           to="/roles"
-          className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
+          className="p-1.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors shadow-2xs"
         >
           <ChevronLeft size={16} />
         </Link>
 
         <div>
-          <h1 className="text-base font-bold text-slate-800 tracking-tight leading-none">
+          <h1 className="text-base font-bold text-slate-800 dark:text-zinc-100 tracking-tight leading-none">
             Create New Role
           </h1>
 
-          <p className="text-[11px] text-slate-500 mt-1 leading-none">
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 leading-none">
             Establish a new security group and assign capabilities
           </p>
         </div>
       </div>
 
       {/* Form */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
         <RoleForm
           onSubmit={handleCreateRole}
           isSubmitting={isSubmitting}
