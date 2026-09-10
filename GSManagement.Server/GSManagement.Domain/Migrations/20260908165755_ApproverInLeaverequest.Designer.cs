@@ -4,6 +4,7 @@ using GSManagement.Domain.DB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GSManagement.Domain.Migrations
 {
     [DbContext(typeof(GSDbContext))]
-    partial class GSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908165755_ApproverInLeaverequest")]
+    partial class ApproverInLeaverequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

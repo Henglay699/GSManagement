@@ -11,7 +11,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     private readonly IAttendanceService _attendanceService = attendanceService;
 
     [HttpGet("grid")]
-    public async Task<IActionResult> GetGrid(
+    public async Task<ActionResult<AttendanceGridResponseDto>> GetGrid(
         [FromQuery] DateOnly? date,
         [FromQuery] AttendanceStatus? status)
     {
@@ -50,7 +50,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     // Powers UserAttendanceDetailPage.tsx: user profile + full-month summary
     // + day-by-day check-in/check-out records.
     [HttpGet("user/{id:int}")]
-    public async Task<IActionResult> GetUserAttendanceDetail(int id, [FromQuery] string month)
+    public async Task<ActionResult<UserAttendanceDetailDto>> GetUserAttendanceDetail(int id, [FromQuery] string month)
     {
         if (!TryParseMonth(month, out var year, out var monthNumber))
         {

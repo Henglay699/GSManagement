@@ -1,6 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState, useCallback, FormEvent } from "react";
-import { Check, X, Plus, Search, Loader2, AlertCircle } from "lucide-react";
+import {
+  Check,
+  X,
+  Plus,
+  Search,
+  Loader2,
+  AlertCircle,
+  Pencil,
+} from "lucide-react";
 import type {
   LeaveRequestDto,
   CreateLeaveRequestDto,
@@ -14,10 +22,6 @@ import {
   getFirstDayOfMonthString,
   getLastDayOfMonthString,
 } from "../../utils/datetimeformater";
-
-// ---------------------------------------------------------------------------
-// API Configuration
-// ---------------------------------------------------------------------------
 
 const API_BASE = "/api";
 
@@ -72,20 +76,15 @@ function StatusBadge({ status }: { status: LeaveStatus }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Page Component
-// ---------------------------------------------------------------------------
-
 export default function LeaveRequestsPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
   const [requests, setRequests] = useState<LeaveRequestDto[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0); // Track pending requests count for badges
+  const [pendingCount, setPendingCount] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const pageSize = 10;
 
-  // History tab defaults to showing Approved leave
   const [statusFilter, setStatusFilter] = useState<LeaveStatus | "">("");
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState(getFirstDayOfMonthString());
@@ -96,7 +95,12 @@ export default function LeaveRequestsPage() {
   const [actioningId, setActioningId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Fetch the count of pending requests independently so badges are always accurate
+  const [rejectingRequest, setRejectingRequest] =
+    useState<LeaveRequestDto | null>(null);
+  const [editingRequest, setEditingRequest] = useState<LeaveRequestDto | null>(
+    null,
+  );
+
   const fetchPendingCount = useCallback(async () => {
     try {
       const params = new URLSearchParams({ status: "Pending", pageSize: "1" });
@@ -105,7 +109,7 @@ export default function LeaveRequestsPage() {
       );
       setPendingCount(data.totalCount);
     } catch {
-      // Fail silently for badge count to avoid disrupting the UI
+      // Fail silently for badge count
     }
   }, []);
 
@@ -134,11 +138,10 @@ export default function LeaveRequestsPage() {
       setRequests(data.items);
       setTotalCount(data.totalCount);
 
-      // If we are on the pending tab, totalCount and pendingCount are the same
       if (activeTab === "pending") {
         setPendingCount(data.totalCount);
       } else {
-        fetchPendingCount(); // Keep badge updated in the background
+        fetchPendingCount();
       }
     } catch (err) {
       setError(
@@ -161,21 +164,37 @@ export default function LeaveRequestsPage() {
     loadRequests();
   }, [loadRequests]);
 
-  async function handleAction(
-    id: number,
-    status: Extract<LeaveStatus, "Approved" | "Reject">,
-  ) {
+  async function handleApprove(id: number) {
     setActioningId(id);
     try {
       await apiFetch<LeaveRequestDto>(`/leave-requests/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
+        method: "PUT",
+        body: JSON.stringify({ status: "Approved" }),
       });
       await loadRequests();
-      await fetchPendingCount(); // Refresh badge count immediately
+      await fetchPendingCount();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to update the request.",
+      );
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleConfirmReject(id: number, remark: string) {
+    setActioningId(id);
+    try {
+      await apiFetch<LeaveRequestDto>(`/leave-requests/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "Reject", note: remark }),
+      });
+      setRejectingRequest(null);
+      await loadRequests();
+      await fetchPendingCount();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to reject the request.",
       );
     } finally {
       setActioningId(null);
@@ -212,7 +231,6 @@ export default function LeaveRequestsPage() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="mb-6 flex gap-6 border-b border-slate-200 dark:border-zinc-800">
         <button
           onClick={() => {
@@ -247,7 +265,6 @@ export default function LeaveRequestsPage() {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search
@@ -334,7 +351,6 @@ export default function LeaveRequestsPage() {
         </div>
       )}
 
-      {/* Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-800">
         <table className="min-w-full divide-y divide-slate-200 dark:divide-zinc-800 text-sm">
           <thead className="bg-slate-50 dark:bg-zinc-800/50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-zinc-400">
@@ -344,17 +360,18 @@ export default function LeaveRequestsPage() {
               <th className="px-4 py-3">Dates</th>
               <th className="px-4 py-3">Days</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Remark</th>
-              {activeTab === "pending" && (
-                <th className="px-4 py-3 text-right">Actions</th>
+              {activeTab === "history" && (
+                <th className="px-4 py-3">Actioned By</th>
               )}
+              <th className="px-4 py-3">Remark</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
             {loading ? (
               <tr>
                 <td
-                  colSpan={activeTab === "pending" ? 7 : 6}
+                  colSpan={8}
                   className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
                 >
                   <Loader2 className="mx-auto animate-spin" size={18} />
@@ -363,7 +380,7 @@ export default function LeaveRequestsPage() {
             ) : requests.length === 0 ? (
               <tr>
                 <td
-                  colSpan={activeTab === "pending" ? 7 : 6}
+                  colSpan={8}
                   className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
                 >
                   No leave requests found.
@@ -371,41 +388,63 @@ export default function LeaveRequestsPage() {
               </tr>
             ) : (
               requests.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/40">
+                <tr
+                  key={r.id}
+                  className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/40"
+                >
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-zinc-200">
                     {r.userName}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">{r.leaveType}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                    {r.leaveType}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
                     {r.startDate} → {r.endDate}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">{r.totalDays}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                    {r.totalDays}
+                  </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={r.status} />
                   </td>
+                  {activeTab === "history" && (
+                    <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                      {r.approverName || "—"}
+                    </td>
+                  )}
                   <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-zinc-400">
                     {r.remark || "—"}
                   </td>
-                  {activeTab === "pending" && (
-                    <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right">
+                    {activeTab === "pending" ? (
                       <div className="flex justify-end gap-1.5">
                         <button
                           disabled={actioningId === r.id}
-                          onClick={() => handleAction(r.id, "Approved")}
+                          onClick={() => handleApprove(r.id)}
                           className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 disabled:opacity-50"
                         >
                           <Check size={14} /> Approve
                         </button>
                         <button
                           disabled={actioningId === r.id}
-                          onClick={() => handleAction(r.id, "Reject")}
+                          onClick={() => setRejectingRequest(r)}
                           className="inline-flex items-center gap-1 rounded-md bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/70 disabled:opacity-50"
                         >
                           <X size={14} /> Reject
                         </button>
                       </div>
-                    </td>
-                  )}
+                    ) : (
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          onClick={() => setEditingRequest(r)}
+                          title="Edit leave request"
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 dark:border-zinc-700 px-2 py-1 text-xs text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                        >
+                          <Pencil size={12} /> Edit
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -413,7 +452,6 @@ export default function LeaveRequestsPage() {
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-zinc-400">
         <span>
           Page {pageNumber} of {totalPages} · {totalCount} total
@@ -448,13 +486,307 @@ export default function LeaveRequestsPage() {
           }}
         />
       )}
+
+      {rejectingRequest && (
+        <RejectReasonModal
+          request={rejectingRequest}
+          onClose={() => setRejectingRequest(null)}
+          onConfirm={(remark) =>
+            handleConfirmReject(rejectingRequest.id, remark)
+          }
+          submitting={actioningId === rejectingRequest.id}
+        />
+      )}
+
+      {editingRequest && (
+        <EditLeaveRequestModal
+          request={editingRequest}
+          onClose={() => setEditingRequest(null)}
+          onUpdated={() => {
+            setEditingRequest(null);
+            loadRequests();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Modal Component
-// ---------------------------------------------------------------------------
+interface RejectReasonModalProps {
+  request: LeaveRequestDto;
+  onClose: () => void;
+  onConfirm: (remark: string) => void;
+  submitting: boolean;
+}
+
+function RejectReasonModal({
+  request,
+  onClose,
+  onConfirm,
+  submitting,
+}: RejectReasonModalProps) {
+  const [remark, setRemark] = useState(request.remark || "");
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    onConfirm(remark);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 p-5 shadow-xl border border-transparent dark:border-zinc-800">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
+          Reject leave request
+        </h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+          Rejecting request for{" "}
+          <span className="font-medium text-slate-700 dark:text-zinc-200">
+            {request.userName}
+          </span>{" "}
+          ({request.leaveType}).
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+              Rejection note / reason
+            </label>
+            <textarea
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              rows={3}
+              required
+              className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+              placeholder="State the reason for rejecting this leave request..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !remark.trim()}
+              className="rounded-lg bg-rose-600 text-white px-3.5 py-2 text-sm font-medium hover:bg-rose-700 disabled:opacity-50"
+            >
+              {submitting ? "Rejecting..." : "Confirm Rejection"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface EditLeaveRequestModalProps {
+  request: LeaveRequestDto;
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+function EditLeaveRequestModal({
+  request,
+  onClose,
+  onUpdated,
+}: EditLeaveRequestModalProps) {
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [form, setForm] = useState({
+    userId: String(request.userId),
+    leaveType: request.leaveType,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    status: request.status,
+    remark: request.remark || "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<unknown>("/user/select-options")
+      .then((data) => setEmployees(toArray<EmployeeOption>(data)))
+      .catch((err) =>
+        setError(
+          err instanceof Error ? err.message : "Failed to load employees.",
+        ),
+      );
+  }, []);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+
+    if (!form.userId || !form.startDate || !form.endDate) {
+      setError("Please fill in employee, start date, and end date.");
+      return;
+    }
+    if (form.endDate < form.startDate) {
+      setError("End date cannot be before start date.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        userId: Number(form.userId),
+        leaveType: form.leaveType,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        status: form.status,
+        remark: form.remark || undefined,
+      };
+      await apiFetch<LeaveRequestDto>(`/leave-requests/${request.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      onUpdated();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update the request.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 p-5 shadow-xl border border-transparent dark:border-zinc-800">
+        <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-zinc-100">
+          Edit leave request
+        </h2>
+
+        {error && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+            <AlertCircle size={16} /> {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+              Employee
+            </label>
+            <select
+              value={form.userId}
+              onChange={(e) => setForm({ ...form, userId: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+            >
+              <option value="">Select employee...</option>
+              {employees.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.userName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+                Leave type
+              </label>
+              <select
+                value={form.leaveType}
+                onChange={(e) =>
+                  setForm({ ...form, leaveType: e.target.value as LeaveType })
+                }
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+              >
+                {LEAVE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+                Status
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    status: e.target.value as LeaveStatus,
+                  })
+                }
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+              >
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Reject">Rejected</option>
+                <option value="Cancel">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+                Start date
+              </label>
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) =>
+                  setForm({ ...form, startDate: e.target.value })
+                }
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+                End date
+              </label>
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
+              Remark (optional)
+            </label>
+            <textarea
+              value={form.remark}
+              onChange={(e) => setForm({ ...form, remark: e.target.value })}
+              rows={2}
+              className="w-full rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-2 text-sm outline-none focus:border-slate-400 dark:focus:border-zinc-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+              placeholder="Reason or context for this leave..."
+            />
+          </div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-slate-900 dark:bg-zinc-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:hover:bg-zinc-600 disabled:opacity-50"
+            >
+              {submitting ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 interface CreateFormState {
   userId: string;

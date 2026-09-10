@@ -12,7 +12,9 @@ public class LeaveRequest
     public required LeaveStatus Status { get; set; }
     public string? Remark { get; set; }
     public DateOnly CreatedAt { get; set; }
+    public int? ApproverId { get; set; }
 
     public User? User { get; set; }
+    public User? Approver { get; set; }
 
 }

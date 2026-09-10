@@ -16,19 +16,16 @@ public class LeaveRequestDto
     public DateOnly EndDate { get; set; }
     public int TotalDays { get; set; }
     public LeaveStatus Status { get; set; }
+    public string? ApproverName { get; set; }
     public string? Remark { get; set; }
     public DateOnly CreatedAt { get; set; }
 
-    // Who actioned it last (approved/rejected) - filled in if you add the
-    // audit columns suggested at the bottom of the controller file.
     public string? ActionedByUserName { get; set; }
     public DateTime? ActionedAt { get; set; }
 }
 
 /// <summary>
 /// Used by an Admin/HR user to create a leave request on behalf of an employee.
-/// Note there is no "CreatedByUserId" field here - that comes from the
-/// authenticated principal in the controller, never trust the client for it.
 /// </summary>
 public class CreateLeaveRequestDto
 {
@@ -38,9 +35,6 @@ public class CreateLeaveRequestDto
     public required DateOnly EndDate { get; set; }
     public string? Remark { get; set; }
 
-    // When HR creates it on behalf of someone, it usually makes sense to let
-    // them immediately mark it Approved instead of forcing a second step.
-    // Defaults to Pending so nothing sneaks through un-reviewed by mistake.
     public LeaveStatus InitialStatus { get; set; } = LeaveStatus.Pending;
 }
 
@@ -56,6 +50,19 @@ public class UpdateLeaveRequestStatusDto
 }
 
 /// <summary>
+/// Used to update an existing leave request from the UI.
+/// </summary>
+public class UpdateLeaveRequestDto
+{
+    public required int UserId { get; set; }
+    public required LeaveType LeaveType { get; set; }
+    public required DateOnly StartDate { get; set; }
+    public required DateOnly EndDate { get; set; }
+    public required LeaveStatus Status { get; set; }
+    public string? Remark { get; set; }
+}
+
+/// <summary>
 /// Query params for the admin list/inbox view.
 /// </summary>
 public class LeaveRequestFilterDto
@@ -65,7 +72,7 @@ public class LeaveRequestFilterDto
     public LeaveType? LeaveType { get; set; }
     public DateOnly? FromDate { get; set; }
     public DateOnly? ToDate { get; set; }
-    public string? Search { get; set; } // matches against employee name
+    public string? Search { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

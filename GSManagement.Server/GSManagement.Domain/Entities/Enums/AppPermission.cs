@@ -14,6 +14,9 @@ public enum AppPermission
     // Attendance
     ViewAttendance, CreateAttendance, UpdateAttendance, DeleteAttendance,
 
+    //Leave
+    ViewLeave, CreateLeave, UpdateLeave, DeleteLeave,
+
     //Client
     ViewClient, CreateClient, UpdateClient, DeleteClient,
 }

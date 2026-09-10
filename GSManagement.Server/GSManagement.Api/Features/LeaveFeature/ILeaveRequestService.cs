@@ -22,5 +22,7 @@ public interface ILeaveRequestService
     /// </summary>
     Task<LeaveRequestDto> UpdateStatusAsync(int id, UpdateLeaveRequestStatusDto dto, int actionedByUserId);
 
+    Task<LeaveRequestDto> UpdateAsync(int id, UpdateLeaveRequestDto dto, int actionedByUserId);
+
     Task DeleteAsync(int id);
 }

@@ -14,8 +14,6 @@ public class LeaveRequestController(ILeaveRequestService leaveRequestService) : 
     private readonly ILeaveRequestService _leaveRequestService = leaveRequestService;
 
     [HttpGet]
-    // Replace with your real permission-check attribute, e.g.
-    // [HasPermission(AppPermission.ViewLeaveRequest)]
     public async Task<ActionResult<PagedResult<LeaveRequestDto>>> GetAll([FromQuery] LeaveRequestFilterDto filter)
     {
         var result = await _leaveRequestService.GetAllAsync(filter);
@@ -29,18 +27,13 @@ public class LeaveRequestController(ILeaveRequestService leaveRequestService) : 
         return result is null ? NotFound() : Ok(result);
     }
 
-    /// <summary>
-    /// Admin/HR creates a leave request on behalf of an employee.
-    /// POST /api/leave-requests
-    /// </summary>
     [HttpPost]
-    // [HasPermission(AppPermission.CreateLeaveRequest)]
     public async Task<ActionResult<LeaveRequestDto>> Create([FromBody] CreateLeaveRequestDto dto)
     {
         try
         {
-            var createdByUserId = GetCurrentUserId();
-            var result = await _leaveRequestService.CreateAsync(dto, createdByUserId);
+            var approvedByUserId = GetCurrentUserId();
+            var result = await _leaveRequestService.CreateAsync(dto, approvedByUserId);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (KeyNotFoundException ex)
@@ -53,12 +46,7 @@ public class LeaveRequestController(ILeaveRequestService leaveRequestService) : 
         }
     }
 
-    /// <summary>
-    /// Approve or reject a pending request.
-    /// PATCH /api/leave-requests/5/status  { "status": "Approved" }
-    /// </summary>
-    [HttpPatch("{id:int}/status")]
-    // [HasPermission(AppPermission.UpdateLeaveRequest)]
+    [HttpPut("{id:int}/status")]
     public async Task<ActionResult<LeaveRequestDto>> UpdateStatus(int id, [FromBody] UpdateLeaveRequestStatusDto dto)
     {
         if (dto.Status is not (LeaveStatus.Approved or LeaveStatus.Reject))
@@ -80,8 +68,30 @@ public class LeaveRequestController(ILeaveRequestService leaveRequestService) : 
         }
     }
 
+    /// <summary>
+    /// Update an existing leave request.
+    /// PUT /api/leave-requests/5
+    /// </summary>
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<LeaveRequestDto>> Update(int id, [FromBody] UpdateLeaveRequestDto dto)
+    {
+        try
+        {
+            var actionedByUserId = GetCurrentUserId();
+            var result = await _leaveRequestService.UpdateAsync(id, dto, actionedByUserId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("{id:int}")]
-    // [HasPermission(AppPermission.DeleteLeaveRequest)]
     public async Task<IActionResult> Delete(int id)
     {
         try

@@ -299,7 +299,7 @@ export function AttendancePage() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="pl-8 pr-2 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              className="pl-8 pr-2 py-1 bg-emerald-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             />
           </div>
 

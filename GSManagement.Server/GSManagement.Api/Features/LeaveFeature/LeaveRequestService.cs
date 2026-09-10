@@ -9,11 +9,9 @@ namespace GSManagement.Api.Features.LeaveFeature;
 
 public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 {
-    // Swap this for whatever your actual context interface is called
-    // (IApplicationDbContext / AppDbContext) - kept generic here.
     private readonly GSDbContext _context = context;
 
-    public async Task<LeaveRequestDto> CreateAsync(CreateLeaveRequestDto dto, int createdByUserId)
+    public async Task<LeaveRequestDto> CreateAsync(CreateLeaveRequestDto dto, int approvedByUserId)
     {
         if (dto.EndDate < dto.StartDate)
             throw new InvalidOperationException("End date cannot be before start date.");
@@ -25,11 +23,6 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         if (!employee.IsActive)
             throw new InvalidOperationException("Cannot create a leave request for an inactive employee.");
 
-        // Blocks a new request if an existing one for the same user/dates is
-        // Pending, Approved, or Reject - only a Cancelled request frees the
-        // dates up for a new submission. (Previously Reject was excluded
-        // here, meaning a rejected request didn't block resubmission - that
-        // was changed on request.)
         var overlaps = await _context.LeaveRequests.AnyAsync(lr =>
             lr.UserId == dto.UserId &&
             lr.Status != LeaveStatus.Cancel &&
@@ -48,7 +41,6 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
 
-        // Block creation if any date in the requested range is a public holiday
         for (var date = dto.StartDate; date <= dto.EndDate; date = date.AddDays(1))
         {
             if (holidayDates.Contains(date))
@@ -82,7 +74,6 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             await _context.SaveChangesAsync();
         }
 
-        // Reload with the User navigation populated for the response DTO.
         entity.User = employee;
         return Map(entity);
     }
@@ -91,6 +82,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
     {
         var query = _context.LeaveRequests
             .Include(lr => lr.User)
+            .Include(lr => lr.Approver)
             .AsQueryable();
 
         if (filter.UserId is not null)
@@ -123,7 +115,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         return new PagedResult<LeaveRequestDto>
         {
-            Items = items.Select(Map).ToList(),
+            Items = items.ConvertAll(Map),
             TotalCount = totalCount,
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize,
@@ -152,11 +144,11 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
                 $"Only pending requests can be actioned. This request is already '{entity.Status}'.");
         }
 
-
         if (dto.Status != LeaveStatus.Approved && dto.Status != LeaveStatus.Reject)
             throw new InvalidOperationException("Status can only be changed to Approved or Reject here.");
 
         entity.Status = dto.Status;
+        entity.ApproverId = actionedByUserId;
 
         if (!string.IsNullOrWhiteSpace(dto.Note))
         {
@@ -165,13 +157,8 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
                 : $"{entity.Remark}\n[{dto.Status}] {dto.Note}";
         }
 
-        // If you add ActionedByUserId / ActionedAt columns (see suggestions),
-        // set them here, e.g.:
-        // entity.ActionedByUserId = actionedByUserId;
-        // entity.ActionedAt = DateTime.UtcNow;
         var holidays = await PublicHolidaysHelper.GetHolidaysAsync(entity.StartDate.Year);
         var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
-
 
         if (dto.Status == LeaveStatus.Approved)
         {
@@ -182,14 +169,73 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         return Map(entity);
     }
 
-    /// <summary>
-    /// Creates or updates one Attendance row per day in the leave range,
-    /// marking it as Leave and linking it back to this request. If a row
-    /// already exists for that user/date (e.g. they'd already checked in
-    /// before the leave was approved), it's overwritten rather than
-    /// duplicated - Attendance has no unique constraint enforced here, so
-    /// this manual lookup is what prevents duplicate rows per user/date.
-    /// </summary>
+    public async Task<LeaveRequestDto> UpdateAsync(int id, UpdateLeaveRequestDto dto, int actionedByUserId)
+    {
+        if (dto.EndDate < dto.StartDate)
+            throw new InvalidOperationException("End date cannot be before start date.");
+
+        var entity = await _context.LeaveRequests
+            .Include(lr => lr.User)
+            .FirstOrDefaultAsync(lr => lr.Id == id)
+            ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
+
+        var employee = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == dto.UserId)
+            ?? throw new KeyNotFoundException($"Employee with id {dto.UserId} was not found.");
+
+        if (!employee.IsActive)
+            throw new InvalidOperationException("Cannot set a leave request for an inactive employee.");
+
+        var overlaps = await _context.LeaveRequests.AnyAsync(lr =>
+            lr.Id != id &&
+            lr.UserId == dto.UserId &&
+            lr.Status != LeaveStatus.Cancel &&
+            lr.StartDate <= dto.EndDate &&
+            lr.EndDate >= dto.StartDate);
+
+        if (overlaps)
+            throw new InvalidOperationException("This employee already has another leave request that overlaps these dates.");
+
+        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.StartDate.Year);
+        if (dto.EndDate.Year != dto.StartDate.Year)
+        {
+            var nextYearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.EndDate.Year);
+            holidays.AddRange(nextYearHolidays);
+        }
+
+        var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
+
+        for (var date = dto.StartDate; date <= dto.EndDate; date = date.AddDays(1))
+        {
+            if (holidayDates.Contains(date))
+            {
+                var holidayInfo = holidays.First(h => DateOnly.FromDateTime(h.Date) == date);
+                throw new InvalidOperationException(
+                    $"Cannot set leave request. {date:yyyy-MM-dd} is a public holiday ({holidayInfo.EnglishName}).");
+            }
+        }
+
+        if (CountWorkingDays(dto.StartDate, dto.EndDate) == 0)
+            throw new InvalidOperationException("This date range only covers Sunday, which is already a day off - no leave request is needed.");
+
+        entity.UserId = dto.UserId;
+        entity.User = employee;
+        entity.LeaveType = dto.LeaveType;
+        entity.StartDate = dto.StartDate;
+        entity.EndDate = dto.EndDate;
+        entity.Status = dto.Status;
+        entity.Remark = dto.Remark;
+        entity.ApproverId = actionedByUserId;
+
+        if (entity.Status == LeaveStatus.Approved)
+        {
+            await SyncAttendanceForApprovedLeaveAsync(entity, holidayDates);
+        }
+
+        await _context.SaveChangesAsync();
+        return Map(entity);
+    }
+
     private async Task SyncAttendanceForApprovedLeaveAsync(LeaveRequest leaveRequest, HashSet<DateOnly> holidayDate)
     {
         var existing = await _context.Attendances
@@ -201,10 +247,6 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         var existingByDate = existing.ToDictionary(a => a.Date);
 
-        // NOTE: this marks every calendar day in the range as Leave, except
-        // Sunday - the company's fixed day off, so it's never touched here
-        // and any existing record for that date (or lack of one) is left
-        // alone. Swap the DayOfWeek check below if the off-day is different.
         for (var date = leaveRequest.StartDate; date <= leaveRequest.EndDate; date = date.AddDays(1))
         {
             if (date.DayOfWeek == DayOfWeek.Sunday || holidayDate.Contains(date)) continue;
@@ -251,12 +293,9 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         Status = entity.Status,
         Remark = entity.Remark,
         CreatedAt = entity.CreatedAt,
+        ApproverName = entity.Approver != null ? entity.Approver!.UserName : null,
     };
 
-    /// <summary>
-    /// Inclusive day count between start and end, excluding Sundays (the
-    /// company's day off) so it doesn't count against the employee's leave.
-    /// </summary>
     private static int CountWorkingDays(DateOnly start, DateOnly end)
     {
         var count = 0;
