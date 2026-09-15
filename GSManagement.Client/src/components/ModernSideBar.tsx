@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
+  CalendarOff,
   BarChart2,
   Settings,
   LogOut,
@@ -11,12 +12,15 @@ import {
   ChevronDown,
   UserCheck,
   Shield,
-  Clock,
   Clock10Icon,
   KeyRound,
   Activity,
   Sun,
   Moon,
+  Bell,
+  Plus,
+  DollarSign,
+  CalendarCheck,
 } from "lucide-react";
 
 import logo from "../assets/logo.png";
@@ -115,6 +119,7 @@ export default function ModernSideBar() {
       path: "/dashboard",
       icon: <LayoutDashboard size={20} />,
     },
+    { text: "Analytics", path: "/analytics", icon: <BarChart2 size={20} /> },
     {
       text: "User Management",
       icon: <Users size={20} />,
@@ -130,17 +135,37 @@ export default function ModernSideBar() {
     },
     {
       text: "Daily Attendance",
-      icon: <Clock size={20} />,
+      icon: <CalendarCheck size={20} />,
       children: [
         {
-          text: "Dashboard",
+          text: "Overview",
           path: "/attendance/dashboard",
           icon: <Activity size={20} />,
         },
-        { text: "Leave", path: "/leaves", icon: <Clock10Icon size={20} /> },
+        {
+          text: "Add Attendance",
+          path: "/attendance/create",
+          icon: <Plus size={20} />,
+        },
       ],
     },
-    { text: "Analytics", path: "/analytics", icon: <BarChart2 size={20} /> },
+    {
+      text: "Leave Management",
+      icon: <CalendarOff size={20} />,
+      children: [
+        {
+          text: "Leave Requests",
+          path: "/leaves/requests",
+          icon: <Bell size={20} />,
+        },
+        {
+          text: "Leave History",
+          path: "/leaves/history",
+          icon: <Clock10Icon size={20} />,
+        },
+      ],
+    },
+    { text: "Payroll", path: "/payroll", icon: <DollarSign size={20} /> },
     { text: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
 

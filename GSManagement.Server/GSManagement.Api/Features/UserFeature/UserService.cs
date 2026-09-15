@@ -86,17 +86,19 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
 
     //-------------------------------------==--------------------------------------------
 
-     public async Task<List<UsersSelectionRespone>> GetUsersDataAsync(CancellationToken ct)
+    public async Task<List<UsersSelectionRespone>> GetUsersDataAsync(CancellationToken ct)
     {
 
-       var users = await _context.Users
-        .Select(u => new UsersSelectionRespone
-        (
-            u.Id,
-            u.UserName,
-            string.Join(",", u.Roles.Select(r => r.RoleName)) ?? string.Empty
-        ))
-        .ToListAsync();
+        var users = await _context.Users
+         .Select(u => new UsersSelectionRespone
+         (
+             u.Id,
+             u.UserName,
+             u.Email,
+             u.ImageUrl,
+             string.Join(",", u.Roles.Select(r => r.RoleName)) ?? string.Empty
+         ))
+         .ToListAsync();
 
         return users;
     }

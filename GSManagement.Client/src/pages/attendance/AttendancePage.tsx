@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import {
@@ -78,6 +80,16 @@ export function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
 
+  // Shift selected date by weeks (-7 or +7 days)
+  const navigateWeek = (daysOffset: number) => {
+    const current = new Date(selectedDate);
+    current.setDate(current.getDate() + daysOffset);
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+    setSelectedDate(`${year}-${month}-${day}`);
+  };
+
   // Fetch Attendance Grid Data using Axios
   const fetchAttendanceGrid = useCallback(async () => {
     setLoading(true);
@@ -127,7 +139,6 @@ export function AttendancePage() {
       setWeekDates(mappedWeekDates);
       setEmployees(mappedEmployees);
       setAttendanceData(mappedAttendance);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -140,12 +151,10 @@ export function AttendancePage() {
   }, [selectedDate, statusFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAttendanceGrid();
   }, [fetchAttendanceGrid]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [searchQuery, selectedDate, statusFilter]);
 
@@ -182,13 +191,7 @@ export function AttendancePage() {
     const totalEmployees = employees.length;
     const remainingPeople = Math.max(0, totalEmployees - present);
 
-    return {
-      present,
-      late,
-      leave,
-      absent,
-      remainingPeople,
-    };
+    return { present, late, leave, absent, remainingPeople };
   }, [attendanceData, selectedDate, employees]);
 
   return (
@@ -196,23 +199,22 @@ export function AttendancePage() {
       {/* Title Header */}
       <div>
         <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-          Employee Attendance
+          Employee Attendance Overview
         </h1>
         <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-          Analyse attendance records of employee
+          Analyse attendance records of employees
         </p>
       </div>
 
       {/* Summary Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {/* Present Today */}
         <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
             <div className="p-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
               <CheckCircle2 size={13} />
             </div>
             <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
-              Present
+              On Time
             </span>
           </div>
           <div>
@@ -225,7 +227,6 @@ export function AttendancePage() {
           </div>
         </div>
 
-        {/* Late Entry */}
         <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
             <div className="p-1 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">
@@ -245,7 +246,6 @@ export function AttendancePage() {
           </div>
         </div>
 
-        {/* On Leave */}
         <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
             <div className="p-1 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50">
@@ -265,7 +265,6 @@ export function AttendancePage() {
           </div>
         </div>
 
-        {/* Absent */}
         <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
           <div className="flex items-center gap-1.5">
             <div className="p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50">
@@ -322,19 +321,44 @@ export function AttendancePage() {
             </select>
           </div>
 
-          {/* Expanded Search Box */}
-          <div className="relative flex items-center flex-1 min-w-[200px] max-w-xs">
+          {/* Search Box */}
+          <div className="relative flex items-center flex-1 min-w-[180px] max-w-xs">
             <Search
               size={12}
               className="absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
             />
             <input
               type="text"
-              placeholder="Search employee by name..."
+              placeholder="Search employee..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-7 pr-2.5 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
             />
+          </div>
+
+          {/* Week Chevron Navigation with Date Display */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg p-0.5">
+            <button
+              onClick={() => navigateWeek(-7)}
+              className="p-1 rounded-md text-slate-600 dark:text-zinc-300 hover:bg-slate-200/60 dark:hover:bg-zinc-700 transition-colors"
+              title="Previous Week"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            <span className="text-[11px] font-semibold text-slate-700 dark:text-zinc-200 px-1.5 whitespace-nowrap">
+              {weekDates.length > 0
+                ? `${weekDates[0].dateString} – ${weekDates[weekDates.length - 1].dateString}`
+                : selectedDate}
+            </span>
+
+            <button
+              onClick={() => navigateWeek(7)}
+              className="p-1 rounded-md text-slate-600 dark:text-zinc-300 hover:bg-slate-200/60 dark:hover:bg-zinc-700 transition-colors"
+              title="Next Week"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
 
           {(statusFilter !== "all" || searchQuery) && (
@@ -346,7 +370,7 @@ export function AttendancePage() {
               className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 transition-colors px-1.5 py-0.5"
             >
               <RotateCcw size={11} />
-              Reset Filters
+              Reset
             </button>
           )}
         </div>

@@ -19,8 +19,6 @@ public class LeaveRequestDto
     public string? ApproverName { get; set; }
     public string? Remark { get; set; }
     public DateOnly CreatedAt { get; set; }
-
-    public string? ActionedByUserName { get; set; }
     public DateTime? ActionedAt { get; set; }
 }
 

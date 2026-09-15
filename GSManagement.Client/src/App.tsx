@@ -11,8 +11,11 @@ import PermissionPage from "./pages/permission/PermissionPage";
 import PermissionDetailPage from "./pages/permission/PermissionDetailPage";
 import UserDetailPage from "./pages/user/UserDetailPage";
 import AttendancePage from "./pages/attendance/AttendancePage";
-import LeavePage from "./pages/leave/LeavePage";
 import UserAttendanceDetailPage from "./pages/attendance/AttendanceDetailPage";
+import LeaveDetailPage from "./pages/leave/LeaveDetailPage";
+import LeaveRequestsPage from "./pages/leave/LeaveResquestsPage";
+import LeaveHistoryPage from "./pages/leave/LeaveHistoryPage";
+import CreateAttendancePage from "./pages/attendance/CreateAttendancePage";
 
 function App() {
   return (
@@ -41,11 +44,14 @@ function App() {
           />
 
           <Route path="/attendance/dashboard" element={<AttendancePage />} />
+          <Route path="/attendance/create" element={<CreateAttendancePage />} />
           <Route
             path="/attendance/user/:id"
             element={<UserAttendanceDetailPage />}
           />
-          <Route path="/leaves" element={<LeavePage />} />
+          <Route path="/leaves/requests" element={<LeaveRequestsPage />} />
+          <Route path="/leaves/history" element={<LeaveHistoryPage />} />
+          <Route path="/leaves/detail/:id" element={<LeaveDetailPage />} />
         </Routes>
       </main>
     </div>

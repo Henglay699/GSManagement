@@ -4,6 +4,7 @@ using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
+using static GSManagement.Api.Shared.Utils.PublicHolidaysHelper;
 
 namespace GSManagement.Api.Features.AttendanceFeature;
 
@@ -18,8 +19,10 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         DateOnly monday = selectedDate.AddDays(-dayOfWeekOffset);
         DateOnly sunday = monday.AddDays(6);
 
-
+        // Fetch primary year holidays as a mutable List
         var holidays = await PublicHolidaysHelper.GetHolidaysAsync(monday.Year);
+
+        // If week crosses into a new year, fetch and append next year's holidays safely
         if (sunday.Year != monday.Year)
         {
             var nextYearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(sunday.Year);
@@ -89,14 +92,30 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         };
     }
 
-
     public async Task<AttendanceRecordDto> CreateAsync(CreateAttendanceDto dto)
     {
+        if(dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue && dto.CheckInTime > dto.CheckOutTime)
+        {
+            throw new InvalidOperationException("Check-in time cannot be later than check-out time.");
+        }
+
         var existing = await _context.Attendances
             .FirstOrDefaultAsync(a => a.UserId == dto.UserId && a.Date == dto.Date);
 
         if (existing != null)
             throw new InvalidOperationException($"Attendance already recorded for this employee on {dto.Date}.");
+
+        var holidays = await GetHolidaysAsync(dto.Date.Year);
+        var holidayInfo = holidays.FirstOrDefault(h => DateOnly.FromDateTime(h.Date) == dto.Date);
+
+        if (holidayInfo != null)
+        {
+            var holidayName = holidayInfo.KhmerName ?? holidayInfo.EnglishName ?? "Public Holiday";
+            throw new InvalidOperationException($"Cannot create attendance record. {dto.Date} is a public holiday ({holidayName}).");
+        }
+
+        if (dto.Date.DayOfWeek == DayOfWeek.Sunday)
+            throw new InvalidOperationException($"Cannot create attendance record on Dayoff Sunday ({dto.Date}).");
 
         var attendance = new Attendance
         {
@@ -150,10 +169,6 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         };
     }
 
-    // -------------------------------------------------------------------
-    // New: user attendance detail (profile + full-month summary + records)
-    // -------------------------------------------------------------------
-
     public async Task<UserAttendanceDetailDto?> GetUserAttendanceDetailAsync(int userId, int year, int month)
     {
         var user = await _context.Users
@@ -178,8 +193,6 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             .OrderBy(a => a.Date)
             .ToListAsync();
 
-        // Summary always reflects the FULL month - it must not depend on
-        // whichever single date the frontend has selected on the calendar.
         var summary = new MonthlyAttendanceSummaryDto
         {
             Present = monthAttendance.Count(a => a.Status == AttendanceStatus.OnTime),
@@ -188,8 +201,9 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             Leave = monthAttendance.Count(a => a.Status == AttendanceStatus.Leave),
         };
 
-        var records = monthAttendance.Select(a => new DayAttendanceRecordDto
+        var records = monthAttendance.ConvertAll(a => new DayAttendanceRecordDto
         {
+            Id = a.Id,
             Date = a.Date,
             CheckInTime = FormatTime(a.CheckInTime),
             CheckOutTime = FormatTime(a.CheckOutTime),
@@ -198,14 +212,13 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
                 : null,
             Status = a.Status,
             Remark = a.Remark,
-        }).ToList();
+            LeaveRequestId = a.LeaveRequestId
+        });
 
         var department = user.Roles is { Count: > 0 }
             ? string.Join(", ", user.Roles.Select(r => r.RoleName))
             : null;
 
-        // Same helper the weekly grid already uses - no cross-year spillover
-        // needed here since firstDayOfMonth/lastDayOfMonth always fall in `year`.
         var yearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(year);
         var monthHolidays = yearHolidays
             .Where(h =>
@@ -236,7 +249,42 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         };
     }
 
-    // TimeOnly -> "08:12 AM" (matches the format the React timeline parses)
+    public async Task<AttendanceRecordDto?> UpdateAsync(int id, CreateAttendanceDto dto)
+    {
+        var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.Id == id);
+        if (attendance == null) return null;
+
+        if (attendance.Status == AttendanceStatus.Leave)
+        {
+            throw new InvalidOperationException("Attendance records associated with approved leave cannot be edited manually.");
+        }
+
+        TimeOnly? checkIn = dto.CheckInTime.HasValue ? dto.CheckInTime : null;
+        TimeOnly? checkOut = dto.CheckOutTime.HasValue ? dto.CheckOutTime : null;
+
+        attendance.CheckInTime = dto.Status == AttendanceStatus.Absent ? null : checkIn;
+        attendance.CheckOutTime = dto.Status == AttendanceStatus.Absent ? null : checkOut;
+        attendance.Status = dto.Status;
+        attendance.Remark = dto.Remark;
+
+        _context.Attendances.Update(attendance);
+        await _context.SaveChangesAsync();
+
+        return new AttendanceRecordDto
+        {
+            Id = attendance.Id,
+            UserId = attendance.UserId,
+            Date = attendance.Date,
+            CheckInTime = attendance.CheckInTime,
+            CheckOutTime = attendance.CheckOutTime,
+            TotalHour = attendance.TotalHour.HasValue
+                ? $"{(int)attendance.TotalHour.Value}h {(int)((attendance.TotalHour.Value % 1) * 60)}m"
+                : null,
+            Status = attendance.Status,
+            Remark = attendance.Remark
+        };
+    }
+
     private static string? FormatTime(TimeOnly? time)
     {
         return time?.ToString("hh:mm tt");

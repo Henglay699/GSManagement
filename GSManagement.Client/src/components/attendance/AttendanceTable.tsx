@@ -79,10 +79,10 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                 key={emp.id}
                 className="hover:bg-slate-50/30 dark:hover:bg-zinc-800/30"
               >
-                {/* Employee Profile Cell - links to the attendance detail page */}
+                {/* Employee Profile Cell */}
                 <td className="p-3.5 border-r border-slate-300 dark:border-zinc-800 align-top">
                   <Link
-                    to={`/attendance/user/${emp.id}`}
+                    to={`/attendance/user/${emp.id}?date=${selectedDate}`}
                     className="!no-underline flex items-center gap-3 group"
                     title={`View ${emp.name}'s attendance details`}
                   >
@@ -102,7 +102,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                   </Link>
                 </td>
 
-                {/* Week Day Grid Cells */}
+                {/* Week Day Grid Cells (Now Clickable) */}
                 {weekDates.map((day) => {
                   const record = attendanceData.find(
                     (att) =>
@@ -114,7 +114,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                   return (
                     <td
                       key={day.dateString}
-                      className={`p-3 border-r border-slate-200 dark:border-zinc-800 align-top last:border-r-0 transition-colors ${
+                      className={`p-1 border-r border-slate-200 dark:border-zinc-800 align-top last:border-r-0 transition-colors ${
                         isSunday ? "bg-slate-100/50 dark:bg-zinc-800/30" : ""
                       } ${
                         isSelected
@@ -122,13 +122,17 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                           : ""
                       }`}
                     >
-                      <div className="flex flex-col justify-between h-14">
+                      <Link
+                        to={`/attendance/user/${emp.id}?date=${day.dateString}`}
+                        className="flex flex-col justify-between h-14 p-2 rounded-lg group hover:bg-indigo-50/70 dark:hover:bg-indigo-950/50 transition-colors !no-underline"
+                        title={`View ${emp.name}'s details for ${day.dateString}`}
+                      >
                         <div className="flex items-center justify-between w-full">
                           <span
                             className={`font-semibold text-xs ${
                               isSelected
                                 ? "text-indigo-700 dark:text-indigo-400 font-bold"
-                                : "text-slate-700 dark:text-zinc-300"
+                                : "text-slate-700 dark:text-zinc-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
                             }`}
                           >
                             {day.dayNumber}
@@ -137,7 +141,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                           {day.isHoliday && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded-md shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                              <span>Holiday</span>
+                              <span>{day.dateString}</span>
                             </span>
                           )}
                         </div>
@@ -163,7 +167,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                             <span className="inline-flex items-center text-[11px] font-medium text-slate-400 dark:text-zinc-500 bg-slate-100/70 dark:bg-zinc-800/70 border border-slate-200/60 dark:border-zinc-700/60 px-2 py-0.5 rounded-md"></span>
                           )}
                         </div>
-                      </div>
+                      </Link>
                     </td>
                   );
                 })}

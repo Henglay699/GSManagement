@@ -18,7 +18,6 @@ export interface LeaveRequestDto {
   remark?: string | null;
   createdAt: string;
   approverName?: string | null;
-  actionedByUserName?: string | null;
   actionedAt?: string | null;
 }
 

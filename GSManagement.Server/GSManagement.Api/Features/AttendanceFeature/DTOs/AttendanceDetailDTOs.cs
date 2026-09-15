@@ -23,12 +23,14 @@ public class MonthlyAttendanceSummaryDto
 
 public class DayAttendanceRecordDto
 {
+    public int Id { get; set; }
     public DateOnly Date { get; set; }          // serializes to "yyyy-MM-dd"
     public string? CheckInTime { get; set; }     // "08:12 AM"
     public string? CheckOutTime { get; set; }    // "05:30 PM"
     public string? TotalHour { get; set; }       // "8h 18m"
     public AttendanceStatus Status { get; set; }
-    public string? Remark { get; set; }          // e.g. reason for absence/leave
+    public string? Remark { get; set; }
+    public int? LeaveRequestId { get; set; }  // e.g. reason for absence/leave
 }
 
 public class HolidayInfoDto

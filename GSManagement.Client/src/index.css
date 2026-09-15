@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
@@ -9,6 +10,6 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+  font-family: 'Geist', 'Kantumruy Pro';
   background-color: #0b0c0e;
 }

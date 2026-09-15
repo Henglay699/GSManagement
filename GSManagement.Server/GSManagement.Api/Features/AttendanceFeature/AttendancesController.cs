@@ -46,6 +46,20 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
         }
     }
 
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<AttendanceRecordDto>> Update(int id, [FromBody] CreateAttendanceDto dto)
+    {
+        try
+        {
+            var result = await _attendanceService.UpdateAsync(id, dto);
+            return result is null ? NotFound(new { message = $"Attendance record {id} not found." }) : Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     // GET /api/attendance/user/5?month=2026-09
     // Powers UserAttendanceDetailPage.tsx: user profile + full-month summary
     // + day-by-day check-in/check-out records.

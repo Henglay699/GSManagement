@@ -126,6 +126,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
     {
         var entity = await _context.LeaveRequests
             .Include(lr => lr.User)
+            .Include(lr => lr.Approver)
             .FirstOrDefaultAsync(lr => lr.Id == id);
 
         return entity is null ? null : Map(entity);
@@ -218,6 +219,12 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         if (CountWorkingDays(dto.StartDate, dto.EndDate) == 0)
             throw new InvalidOperationException("This date range only covers Sunday, which is already a day off - no leave request is needed.");
 
+        // 1. Remove all existing attendance records synced to this leave request ID
+        await _context.Attendances
+            .Where(a => a.LeaveRequestId == id)
+            .ExecuteDeleteAsync();
+
+        // 2. Update entity properties
         entity.UserId = dto.UserId;
         entity.User = employee;
         entity.LeaveType = dto.LeaveType;
@@ -227,6 +234,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         entity.Remark = dto.Remark;
         entity.ApproverId = actionedByUserId;
 
+        // 3. Sync attendance again ONLY if the updated status is Approved
         if (entity.Status == LeaveStatus.Approved)
         {
             await SyncAttendanceForApprovedLeaveAsync(entity, holidayDates);
@@ -276,6 +284,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         var entity = await _context.LeaveRequests.FindAsync(id)
             ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
 
+        await _context.Attendances.Where(a => a.LeaveRequestId == id).ExecuteDeleteAsync();
         _context.LeaveRequests.Remove(entity);
         await _context.SaveChangesAsync();
     }
