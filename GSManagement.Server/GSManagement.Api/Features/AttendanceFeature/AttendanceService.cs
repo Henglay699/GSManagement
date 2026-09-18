@@ -94,9 +94,16 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
 
     public async Task<AttendanceRecordDto> CreateAsync(CreateAttendanceDto dto)
     {
-        if(dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue && dto.CheckInTime > dto.CheckOutTime)
+        if (dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue && dto.CheckInTime > dto.CheckOutTime)
         {
             throw new InvalidOperationException("Check-in time cannot be later than check-out time.");
+        }
+
+        var checkInTimeGracePeriod = new TimeOnly(8, 15);
+
+        if (dto.CheckInTime.HasValue && dto.CheckInTime > checkInTimeGracePeriod && dto.Status == AttendanceStatus.OnTime)
+        {
+            throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
         }
 
         var existing = await _context.Attendances
@@ -251,6 +258,18 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
 
     public async Task<AttendanceRecordDto?> UpdateAsync(int id, CreateAttendanceDto dto)
     {
+        if (dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue && dto.CheckInTime > dto.CheckOutTime)
+        {
+            throw new InvalidOperationException("Check-in time cannot be later than check-out time.");
+        }
+
+        var checkInTimeGracePeriod = new TimeOnly(8, 15);
+
+        if (dto.CheckInTime.HasValue && dto.CheckInTime > checkInTimeGracePeriod && dto.Status == AttendanceStatus.OnTime)
+        {
+            throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
+        }
+
         var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.Id == id);
         if (attendance == null) return null;
 
