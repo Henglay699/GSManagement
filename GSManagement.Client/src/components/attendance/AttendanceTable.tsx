@@ -82,7 +82,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                 {/* Employee Profile Cell */}
                 <td className="p-3.5 border-r border-slate-300 dark:border-zinc-800 align-top">
                   <Link
-                    to={`/attendance/user/${emp.id}?date=${selectedDate}`}
+                    to={`/admin/attendance/user/${emp.id}?date=${selectedDate}`}
                     className="!no-underline flex items-center gap-3 group"
                     title={`View ${emp.name}'s attendance details`}
                   >
@@ -123,7 +123,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
                       }`}
                     >
                       <Link
-                        to={`/attendance/user/${emp.id}?date=${day.dateString}`}
+                        to={`/admin/attendance/user/${emp.id}?date=${day.dateString}`}
                         className="flex flex-col justify-between h-14 p-2 rounded-lg group hover:bg-indigo-50/70 dark:hover:bg-indigo-950/50 transition-colors !no-underline"
                         title={`View ${emp.name}'s details for ${day.dateString}`}
                       >

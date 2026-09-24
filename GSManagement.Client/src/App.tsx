@@ -43,10 +43,16 @@ function App() {
             element={<PermissionDetailPage />}
           />
 
-          <Route path="/attendance/dashboard" element={<AttendancePage />} />
-          <Route path="/attendance/create" element={<CreateAttendancePage />} />
           <Route
-            path="/attendance/user/:id"
+            path="admin/attendances/dashboard"
+            element={<AttendancePage />}
+          />
+          <Route
+            path="admin/attendance/create"
+            element={<CreateAttendancePage />}
+          />
+          <Route
+            path="admin/attendance/user/:id"
             element={<UserAttendanceDetailPage />}
           />
           <Route path="/leaves/requests" element={<LeaveRequestsPage />} />

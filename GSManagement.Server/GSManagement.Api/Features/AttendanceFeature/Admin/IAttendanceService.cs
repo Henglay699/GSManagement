@@ -1,7 +1,7 @@
-using GSManagement.Api.Features.AttendanceFeature.DTOs;
+using GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
 using GSManagement.Domain.Entities.Enums;
 
-namespace GSManagement.Api.Features.AttendanceFeature;
+namespace GSManagement.Api.Features.AttendanceFeature.Admin;
 
 public interface IAttendanceService
 {

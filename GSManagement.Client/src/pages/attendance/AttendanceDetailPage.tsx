@@ -263,7 +263,7 @@ export function UserAttendanceDetailPage() {
     try {
       const monthParam = `${viewYear}-${pad(viewMonth + 1)}`;
       const response = await axios.get<AttendanceDetailResponse>(
-        `/api/attendance/user/${id}`,
+        `/api/admin/attendances/user/${id}`,
         { params: { month: monthParam } },
       );
       setData(response.data);
@@ -385,12 +385,12 @@ export function UserAttendanceDetailPage() {
 
     try {
       if (modalMode === "create") {
-        await axios.post("/api/attendance", payload);
+        await axios.post("/api/admin/attendances", payload);
       } else if (modalMode === "edit") {
         if (!editingRecordId) {
           throw new Error("Missing attendance record ID.");
         }
-        await axios.put(`/api/attendance/${editingRecordId}`, payload);
+        await axios.put(`/api/admin/attendances/${editingRecordId}`, payload);
       }
       setIsModalOpen(false);
       setEditingRecordId(null);

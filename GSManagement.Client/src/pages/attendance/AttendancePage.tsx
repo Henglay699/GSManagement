@@ -97,7 +97,7 @@ export function AttendancePage() {
 
     try {
       const response = await axios.get<AttendanceGridResponseDto>(
-        "/api/attendance/grid",
+        "/api/admin/attendances/grid",
         {
           params: {
             date: selectedDate,

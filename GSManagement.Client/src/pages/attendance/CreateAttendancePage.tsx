@@ -205,7 +205,7 @@ export function AddAttendancePage() {
     setLoading(true);
 
     try {
-      await axios.post("/api/attendance", payload);
+      await axios.post("/api/admin/attendances", payload);
       setSuccessMessage("Attendance record created successfully.");
       setTimeout(() => {
         navigate(-1);

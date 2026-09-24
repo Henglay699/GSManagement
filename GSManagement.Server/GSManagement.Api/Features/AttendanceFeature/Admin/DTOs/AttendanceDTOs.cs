@@ -1,6 +1,6 @@
 using GSManagement.Domain.Entities.Enums;
 
-namespace GSManagement.Api.Features.AttendanceFeature.DTOs;
+namespace GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
 
 public class AttendanceGridResponseDto
 {

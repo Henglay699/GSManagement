@@ -50,7 +50,7 @@ function UserTable({ users, onDelete }: UserTableProps) {
                   <Edit size={14} />
                 </Link>
                 <Link
-                  to={`/attendance/user/${user.id}`}
+                  to={`/admin/attendance/user/${user.id}`}
                   className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
                   title="View attendance"
                 >

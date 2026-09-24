@@ -1,11 +1,12 @@
-using GSManagement.Api.Features.AttendanceFeature.DTOs;
+using GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
+using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.Entities.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GSManagement.Api.Features.AttendanceFeature;
+namespace GSManagement.Api.Features.AttendanceFeature.Admin;
 
 [ApiController]
-[Route("api/attendance")]
+[Route("api/admin/attendances")]
 public class AttendanceController(IAttendanceService attendanceService) : ControllerBase
 {
     private readonly IAttendanceService _attendanceService = attendanceService;
@@ -66,7 +67,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     [HttpGet("user/{id:int}")]
     public async Task<ActionResult<UserAttendanceDetailDto>> GetUserAttendanceDetail(int id, [FromQuery] string month)
     {
-        if (!TryParseMonth(month, out var year, out var monthNumber))
+        if (!DateParser.TryParseMonth(month, out var year, out var monthNumber))
         {
             return BadRequest(new { message = "Query parameter 'month' must be in 'yyyy-MM' format." });
         }
@@ -78,24 +79,4 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
             : Ok(result);
     }
 
-    private static bool TryParseMonth(string? month, out int year, out int monthNumber)
-    {
-        year = 0;
-        monthNumber = 0;
-
-        if (string.IsNullOrWhiteSpace(month))
-        {
-            return false;
-        }
-
-        var parts = month.Split('-');
-        if (parts.Length != 2)
-        {
-            return false;
-        }
-
-        return int.TryParse(parts[0], out year)
-            && int.TryParse(parts[1], out monthNumber)
-            && monthNumber is >= 1 and <= 12;
-    }
 }

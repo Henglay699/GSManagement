@@ -1,12 +1,13 @@
-using GSManagement.Api.Features.AttendanceFeature.DTOs;
+using GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
 using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
+using static GSManagement.Api.Shared.Utils.DateParser;
 using static GSManagement.Api.Shared.Utils.PublicHolidaysHelper;
 
-namespace GSManagement.Api.Features.AttendanceFeature;
+namespace GSManagement.Api.Features.AttendanceFeature.Admin;
 
 public class AttendanceService(GSDbContext context) : IAttendanceService
 {
@@ -104,6 +105,11 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         if (dto.CheckInTime.HasValue && dto.CheckInTime > checkInTimeGracePeriod && dto.Status == AttendanceStatus.OnTime)
         {
             throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
+        }
+
+        if (dto.CheckInTime.HasValue && dto.CheckInTime < checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
+        {
+            throw new InvalidOperationException("Check-in time is earlier than 8:15 AM. Please mark the status as 'OnTime' instead of 'Late'.");
         }
 
         var existing = await _context.Attendances
@@ -212,8 +218,8 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         {
             Id = a.Id,
             Date = a.Date,
-            CheckInTime = FormatTime(a.CheckInTime),
-            CheckOutTime = FormatTime(a.CheckOutTime),
+            CheckInTime = DateParser.FormatTime(a.CheckInTime),
+            CheckOutTime = DateParser.FormatTime(a.CheckOutTime),
             TotalHour = a.TotalHour.HasValue
                 ? $"{(int)a.TotalHour.Value}h {(int)((a.TotalHour.Value % 1) * 60)}m"
                 : null,
@@ -270,6 +276,11 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
         }
 
+        if (dto.CheckInTime.HasValue && dto.CheckInTime < checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
+        {
+            throw new InvalidOperationException("Check-in time is earlier than 8:15 AM. Please mark the status as 'OnTime' instead of 'Late'.");
+        }
+
         var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.Id == id);
         if (attendance == null) return null;
 
@@ -304,8 +315,4 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         };
     }
 
-    private static string? FormatTime(TimeOnly? time)
-    {
-        return time?.ToString("hh:mm tt");
-    }
 }

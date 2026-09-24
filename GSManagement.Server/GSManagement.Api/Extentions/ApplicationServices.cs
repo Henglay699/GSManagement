@@ -1,9 +1,8 @@
-﻿using GSManagement.Api.Features.AttendanceFeature;
+﻿using GSManagement.Api.Features.AttendanceFeature.Admin;
 using GSManagement.Api.Features.LeaveFeature;
 using GSManagement.Api.Features.Permissionfeature;
 using GSManagement.Api.Features.RoleFeature;
 using GSManagement.Api.Features.UserFeature;
-using GSManagement.Domain.Entities;
 
 namespace GSManagement.Api.Extentions;
 

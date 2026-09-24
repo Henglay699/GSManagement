@@ -115,7 +115,7 @@ function UserDetailPage() {
             </Link>
             {/* Action Button */}
             <Link
-              to={`/attendance/user/${user.id}`}
+              to={`/admin/attendance/user/${user.id}`}
               className="!no-underline inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-100 dark:shadow-none"
             >
               <Calendar size={16} />

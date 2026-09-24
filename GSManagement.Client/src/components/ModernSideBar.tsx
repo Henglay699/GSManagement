@@ -139,12 +139,12 @@ export default function ModernSideBar() {
       children: [
         {
           text: "Overview",
-          path: "/attendance/dashboard",
+          path: "admin/attendances/dashboard",
           icon: <Activity size={20} />,
         },
         {
           text: "Add Attendance",
-          path: "/attendance/create",
+          path: "admin/attendance/create",
           icon: <Plus size={20} />,
         },
       ],
