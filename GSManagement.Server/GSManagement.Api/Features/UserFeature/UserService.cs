@@ -1,15 +1,23 @@
 using GSManagement.Api.Features.UserFeature.DTOs;
 using GSManagement.Api.Hubs;
 using GSManagement.Api.Shared.Models;
+using GSManagement.Api.Shared.Storage;
 using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
+using JwtTest.Middlewares.CheckPermission;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace GSManagement.Api.Features.UserFeature;
 
-public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) : IUserService
+public class UserService(
+    GSDbContext _context,
+    IHubContext<UserHub> hubContext,
+    IFileStorage fileStorage,
+    UserAccessCache accessCache) : IUserService
 {
+    public const long MaxPhotoBytes = 5 * 1024 * 1024;
+
     public async Task<Result<UserResponse?>> GetUserByIdAsync(int Id, CancellationToken cancellationToken)
     {
         var user = await _context.Users
@@ -21,6 +29,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
                 u.UserName,
                 u.Email,
                 u.IsActive,
+                u.ImageUrl,
                 u.Roles.Select(r => new RoleResponse
                 (
                     r.Id,
@@ -67,6 +76,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
                 u.UserName,
                 u.Email,
                 u.IsActive,
+                u.ImageUrl,
                 u.Roles.Select(r => new RoleResponse
                 (
                     r.Id,
@@ -135,8 +145,8 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
         var user = new User
         {
             UserName = request.UserName,
-            Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Email = request.Email.Trim().ToLower(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim()),
         };
         foreach (var role in validRoles)
         {
@@ -150,6 +160,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
             user.UserName,
             user.Email,
             user.IsActive,
+            user.ImageUrl,
             user.Roles.Select(r => new RoleResponse(
                 r.Id,
                 r.RoleName,
@@ -207,13 +218,13 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
             }
         }
         user.UserName = request.UserName;
-        user.Email = request.Email;
+        user.Email = request.Email.Trim().ToLower();
         user.IsActive = request.IsActive;
 
 
         if (!string.IsNullOrWhiteSpace(request.NewPassword))
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
         }
 
         user.Roles.Clear();
@@ -223,6 +234,8 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+        // Roles or the active flag may have changed.
+        await accessCache.InvalidateAsync(user.Id, cancellationToken);
 
         var assignedRoleNames = user.Roles.Select(r => r.RoleName).ToList();
 
@@ -231,6 +244,7 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
             user.UserName,
             user.Email,
             user.IsActive,
+            user.ImageUrl,
             user.Roles.Select(r => new RoleResponse(
                 r.Id,
                 r.RoleName,
@@ -260,8 +274,121 @@ public class UserService(GSDbContext _context, IHubContext<UserHub> hubContext) 
         }
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
+        await accessCache.InvalidateAsync(user.Id, cancellationToken);
+        await fileStorage.DeleteByUrlAsync(user.ImageUrl, cancellationToken);
         await hubContext.Clients.All.SendAsync("UserDeleted", user.Id, cancellationToken);
         return Result<bool>.Success(true);
     }
 
+    //------------------------------==--------------------------------------------
+    public async Task<Result<UserPhotoResponse>> UploadPhotoAsync(int id, IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file.Length == 0)
+            return Result<UserPhotoResponse>.Fail("Photo file is empty.", ErrorType.Validation);
+        if (file.Length > MaxPhotoBytes)
+            return Result<UserPhotoResponse>.Fail("Photo must be 5 MB or smaller.", ErrorType.Validation);
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user == null)
+            return Result<UserPhotoResponse>.Fail($"User with ID {id} was not found.", ErrorType.NotFound);
+
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+
+        // Trust the file's bytes, not the client-supplied Content-Type.
+        var format = DetectImageFormat(stream.GetBuffer().AsSpan(0, (int)stream.Length));
+        if (format is null)
+            return Result<UserPhotoResponse>.Fail("Only JPEG, PNG or WebP images are allowed.", ErrorType.Validation);
+
+        stream.Position = 0;
+        // A new key per upload, so browsers and the CDN never serve a stale cached photo.
+        var key = $"users/{id}/{Guid.NewGuid():N}.{format.Value.Extension}";
+        var newUrl = await fileStorage.UploadAsync(stream, key, format.Value.ContentType, cancellationToken);
+
+        var oldUrl = user.ImageUrl;
+        user.ImageUrl = newUrl;
+        await _context.SaveChangesAsync(cancellationToken);
+        await fileStorage.DeleteByUrlAsync(oldUrl, cancellationToken);
+
+        await BroadcastUserUpdatedAsync(id, cancellationToken);
+        return Result<UserPhotoResponse>.Success(new UserPhotoResponse(newUrl));
+    }
+
+    //------------------------------==--------------------------------------------
+    public async Task<Result<bool>> RemovePhotoAsync(int id, CancellationToken cancellationToken)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user == null)
+            return Result<bool>.Fail($"User with ID {id} was not found.", ErrorType.NotFound);
+
+        var oldUrl = user.ImageUrl;
+        user.ImageUrl = null;
+        await _context.SaveChangesAsync(cancellationToken);
+        await fileStorage.DeleteByUrlAsync(oldUrl, cancellationToken);
+
+        await BroadcastUserUpdatedAsync(id, cancellationToken);
+        return Result<bool>.Success(true);
+    }
+
+    //------------------------------==--------------------------------------------
+    // Self-service (My Profile): a user may only change their own name here.
+    // Email, roles and the active flag stay admin-only (UpdateUserAsync).
+    public async Task<Result<bool>> UpdateOwnNameAsync(int id, string userName, CancellationToken cancellationToken)
+    {
+        userName = userName.Trim();
+        if (userName.Length == 0)
+            return Result<bool>.Fail("Username is required.", ErrorType.Validation);
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user == null)
+            return Result<bool>.Fail("User not found.", ErrorType.NotFound);
+
+        if (await _context.Users.AnyAsync(u => u.Id != id && u.UserName == userName, cancellationToken))
+            return Result<bool>.Fail("Username is already used by another user.", ErrorType.Conflict);
+
+        user.UserName = userName;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        await BroadcastUserUpdatedAsync(id, cancellationToken);
+        return Result<bool>.Success(true);
+    }
+
+    //------------------------------==--------------------------------------------
+    public async Task<Result<bool>> ChangeOwnPasswordAsync(int id, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword))
+            return Result<bool>.Fail("New password is required.", ErrorType.Validation);
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user == null)
+            return Result<bool>.Fail("User not found.", ErrorType.NotFound);
+
+        // Trimmed like login and the admin create/update paths do.
+        if (!BCrypt.Net.BCrypt.Verify(currentPassword.Trim(), user.PasswordHash))
+            return Result<bool>.Fail("Current password is incorrect.", ErrorType.Validation);
+        if (BCrypt.Net.BCrypt.Verify(newPassword.Trim(), user.PasswordHash))
+            return Result<bool>.Fail("New password must be different from the current one.", ErrorType.Validation);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword.Trim());
+        await _context.SaveChangesAsync(cancellationToken);
+        return Result<bool>.Success(true);
+    }
+
+    private async Task BroadcastUserUpdatedAsync(int id, CancellationToken cancellationToken)
+    {
+        var updated = await GetUserByIdAsync(id, cancellationToken);
+        if (updated.IsSuccess)
+            await hubContext.Clients.All.SendAsync("UserUpdated", updated.Value, cancellationToken);
+    }
+
+    private static (string Extension, string ContentType)? DetectImageFormat(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xD8, 0xFF]))
+            return ("jpg", "image/jpeg");
+        if (bytes.StartsWith((ReadOnlySpan<byte>)[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+            return ("png", "image/png");
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8))
+            return ("webp", "image/webp");
+        return null;
+    }
 }

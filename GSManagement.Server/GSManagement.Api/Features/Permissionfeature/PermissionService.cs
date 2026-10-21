@@ -17,7 +17,7 @@ public class PermissionService(GSDbContext db)
                     p.CreatedAt,
                     p.Module.ToString()
                 ))
-                .ToListAsync(ct);
+                .ToListAsync(ct);   
 
 
         return Result<List<PermissionResponse>>.Success(permissions);

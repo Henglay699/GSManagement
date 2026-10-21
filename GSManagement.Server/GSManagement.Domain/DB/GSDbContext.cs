@@ -1,4 +1,4 @@
-﻿using GSManagement.Domain.DB;
+using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.JointEntities;
 using GSManagement.Domain.EntityConfig;
@@ -13,10 +13,12 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<Permission> Permissions => Set<Permission>();
-    public DbSet<User> RefreshToken => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<OvertimeRecord> OvertimeRecords => Set<OvertimeRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +28,8 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
         modelBuilder.ApplyConfiguration(new PermissionConfig());
         modelBuilder.ApplyConfiguration(new AttendanceConfig());
         modelBuilder.ApplyConfiguration(new LeaveRequestConfig());
+        modelBuilder.ApplyConfiguration(new ShiftConfig());
+        modelBuilder.ApplyConfiguration(new OvertimeRecordConfig());
 
         base.OnModelCreating(modelBuilder);
     }

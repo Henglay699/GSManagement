@@ -7,5 +7,4 @@ public record UpdateUserRequest(
     [Required][EmailAddress] string Email,
     bool IsActive = true,
     string? NewPassword = null,
-    string? ImageUrl = null,
     IEnumerable<int>? RoleIds = null);

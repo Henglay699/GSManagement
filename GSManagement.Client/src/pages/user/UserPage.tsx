@@ -1,96 +1,71 @@
-import { useEffect, useState, useMemo } from "react";
-import UserTable from "../../components/user/UserTable";
-import { User } from "../../models/user";
-import { fetchUsers, deleteUser } from "../../services/userservice";
-import * as signalR from "@microsoft/signalr";
-import axios from "axios";
+import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Search,
-  Plus,
-  Loader2,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
-  LayoutGrid,
-  List,
   Filter,
+  Loader2,
+  Plus,
+  Search,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import UserTable from "../../components/user/UserTable";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { useAsync } from "../../hooks/useAsync";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useUserHub } from "../../hooks/useUserHub";
+import { getErrorMessage } from "../../lib/api";
+import { paths } from "../../lib/paths";
+import { deleteUser, fetchUsers } from "../../services/userService";
+import type { User } from "../../types/user";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
+
+const ITEMS_PER_PAGE = 12; // 3 rows x 4 columns
+
+type StatusFilter = "all" | "active" | "inactive";
 
 function UserPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("all"); // "all" | "active" | "inactive"
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const { hasPermission } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebouncedValue(searchTerm);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Delete modal states
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Pagination states - Updated itemsPerPage to 12 (3 rows x 4 columns)
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const itemsPerPage = 12;
+  const { data, setData, loading, error, setError, reload } = useAsync(
+    useCallback(
+      () => fetchUsers(currentPage, ITEMS_PER_PAGE, debouncedSearch),
+      [currentPage, debouncedSearch],
+    ),
+    "An unexpected error occurred",
+  );
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentPage(1);
-  }, [searchTerm]);
+  useUserHub({
+    onCreated: reload,
+    onUpdated: (updated) =>
+      setData(
+        (prev) =>
+          prev && {
+            ...prev,
+            items: prev.items.map((u) => (u.id === updated.id ? updated : u)),
+          },
+      ),
+    onDeleted: (deletedId) =>
+      setData(
+        (prev) =>
+          prev && {
+            ...prev,
+            items: prev.items.filter((u) => u.id !== deletedId),
+            totalCount: prev.totalCount - 1,
+          },
+      ),
+  });
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchUsers(currentPage, itemsPerPage, searchTerm);
-        setUsers(data.items);
-        setTotalPages(data.totalPages);
-        setTotalCount(data.totalCount);
-        setErrorMessage(undefined);
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          setErrorMessage("Backend server can't be reached.");
-        } else {
-          setErrorMessage("An unexpected error occurred");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUsers();
-  }, [currentPage, searchTerm]);
-
-  useEffect(() => {
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl("/api/userhub")
-      .withAutomaticReconnect()
-      .build();
-
-    connection.on("UserCreated", () => {
-      setCurrentPage((prev) => prev);
-    });
-
-    connection.on("UserUpdated", (updatedUser: User) => {
-      setUsers((prev) =>
-        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
-      );
-    });
-
-    connection.on("UserDeleted", (deletedUserId: number) => {
-      setUsers((prev) => prev.filter((user) => user.id !== deletedUserId));
-      setTotalCount((prev) => prev - 1);
-    });
-
-    connection.start().catch((err) => console.error("❌ SignalR Error:", err));
-
-    return () => {
-      if (connection.state === signalR.HubConnectionState.Connected) {
-        connection.stop();
-      }
-    };
-  }, []);
+  const users = useMemo(() => data?.items ?? [], [data]);
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
@@ -98,46 +73,43 @@ function UserPage() {
     try {
       await deleteUser(userToDelete.id);
       setUserToDelete(null);
-    } catch (error) {
-      console.error("Failed to delete user:", error);
+      await reload();
+    } catch (err) {
+      setUserToDelete(null);
+      setError(getErrorMessage(err, "Failed to delete user."));
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Filter users client-side based on status selection
+  // Status is filtered client-side on the current page.
   const filteredUsers = useMemo(() => {
-    if (statusFilter === "active") {
+    if (statusFilter === "active")
       return users.filter((u) => u.isActive !== false);
-    }
-    if (statusFilter === "inactive") {
+    if (statusFilter === "inactive")
       return users.filter((u) => u.isActive === false);
-    }
     return users;
   }, [users, statusFilter]);
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-3 p-2">
-      {/* Top Header Section with Navigation Tabs */}
       <div className="border-b border-slate-200 dark:border-zinc-800 pb-2">
         <div className="flex items-center gap-6 text-xs font-semibold text-slate-500 dark:text-zinc-400 overflow-x-auto">
-          <button className="text-slate-900 dark:text-zinc-100 border-b-2 text-[22px] border-slate-900 dark:border-zinc-100 pb-1 flex items-center gap-1.5">
+          <h1 className="text-slate-900 dark:text-zinc-100 border-b-2 text-[22px] border-slate-900 dark:border-zinc-100 pb-1 flex items-center gap-1.5">
             Total Users{" "}
-            <span className="bg-slate-900 dark:bg-zinc-700 text-white text-[11px] px-1.5 py-0.2 rounded-full">
+            <span className="bg-slate-900 dark:bg-zinc-700 text-white text-[11px] px-1.5 rounded-full">
               {totalCount}
             </span>
-          </button>
+          </h1>
         </div>
       </div>
 
-      {/* Main Container Card */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-        {/* Search, Status Dropdown, and Actions Toolbar */}
+        {/* Toolbar */}
         <div className="p-2.5 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap flex-1">
-            {/* Search Bar */}
             <div className="relative w-86">
               <Search
                 size={14}
@@ -148,11 +120,13 @@ function UserPage() {
                 className="w-full pl-8 pr-9 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                 placeholder="Search username or email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setSearchTerm(e.target.value);
+                }}
               />
             </div>
 
-            {/* Status Sort/Filter Dropdown */}
             <div className="relative flex items-center">
               <Filter
                 size={13}
@@ -160,7 +134,9 @@ function UserPage() {
               />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as StatusFilter)
+                }
                 className="pl-7 pr-6 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer appearance-none"
               >
                 <option value="all">Status: All</option>
@@ -170,35 +146,27 @@ function UserPage() {
             </div>
           </div>
 
-          {/* Right Toolbar Controls (View options & Add Button) */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center border border-slate-200 dark:border-zinc-700 rounded-lg p-0.5 bg-slate-50 dark:bg-zinc-800">
-              <button className="p-1 text-slate-800 dark:text-zinc-100 bg-white dark:bg-zinc-700 shadow-xs rounded">
-                <LayoutGrid size={14} />
-              </button>
-              <button className="p-1 text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 rounded">
-                <List size={14} />
-              </button>
-            </div>
-
-            <Link to={"/user/create"}>
-              <button className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white font-medium text-xs rounded-lg transition-all shadow-xs">
+            {hasPermission(Permission.CreateUser) && (
+              <Link
+                to={paths.userCreate}
+                className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white font-medium text-xs rounded-lg transition-all shadow-xs"
+              >
                 <Plus size={14} />
                 <span>Add staff</span>
-              </button>
-            </Link>
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Content Section */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-zinc-400">
             <Loader2 className="w-6 h-6 animate-spin text-sky-500 mb-2" />
             <span className="text-xs">Loading staff...</span>
           </div>
-        ) : errorMessage != null ? (
+        ) : error ? (
           <div className="py-12 text-center text-xs font-medium text-rose-500 dark:text-rose-400">
-            {errorMessage}
+            {error}
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 dark:text-zinc-500">
@@ -206,12 +174,8 @@ function UserPage() {
           </div>
         ) : (
           <>
-            <UserTable
-              users={filteredUsers}
-              onDelete={(user) => setUserToDelete(user)}
-            />
+            <UserTable users={filteredUsers} onDelete={setUserToDelete} />
 
-            {/* Pagination Footer */}
             <div className="px-4 py-2 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
               <span className="text-[11px] text-slate-500 dark:text-zinc-400">
                 Showing{" "}
@@ -220,7 +184,7 @@ function UserPage() {
                 </span>{" "}
                 to{" "}
                 <span className="font-semibold text-slate-700 dark:text-zinc-300">
-                  {Math.min(startIndex + itemsPerPage, totalCount)}
+                  {Math.min(startIndex + ITEMS_PER_PAGE, totalCount)}
                 </span>{" "}
                 of{" "}
                 <span className="font-semibold text-slate-700 dark:text-zinc-300">
@@ -259,55 +223,23 @@ function UserPage() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
       {userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 max-w-sm w-full shadow-xl border border-slate-100 dark:border-zinc-800 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg shrink-0">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                  Delete Staff Member
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold text-slate-700 dark:text-zinc-300">
-                    {userToDelete.userName}
-                  </span>
-                  ?
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setUserToDelete(null)}
-                disabled={isDeleting}
-                className="px-3 py-1 rounded-lg border border-slate-200 dark:border-zinc-700 text-xs font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Delete</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Delete Staff Member"
+          message={
+            <>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+                {userToDelete.userName}
+              </span>
+              ?
+            </>
+          }
+          confirmLabel="Delete"
+          busy={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setUserToDelete(null)}
+        />
       )}
     </div>
   );

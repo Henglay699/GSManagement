@@ -19,6 +19,8 @@ public class MonthlyAttendanceSummaryDto
     public int Late { get; set; }
     public int Absent { get; set; }
     public int Leave { get; set; }
+    public int HalfDayLeave { get; set; }
+    public double TotalOvertimeHours { get; set; }
 }
 
 public class DayAttendanceRecordDto
@@ -28,6 +30,10 @@ public class DayAttendanceRecordDto
     public string? CheckInTime { get; set; }     // "08:12 AM"
     public string? CheckOutTime { get; set; }    // "05:30 PM"
     public string? TotalHour { get; set; }       // "8h 18m"
+    public double? OvertimeMinutes { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
+    public string? ShiftName { get; set; }
     public AttendanceStatus Status { get; set; }
     public string? Remark { get; set; }
     public int? LeaveRequestId { get; set; }  // e.g. reason for absence/leave

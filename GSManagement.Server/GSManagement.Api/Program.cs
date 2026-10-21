@@ -1,12 +1,19 @@
 using GSManagement.Api.Extentions;
 using GSManagement.Api.Hubs;
+using GSManagement.Api.Shared.Email;
+using GSManagement.Api.Shared.Storage;
 using GSManagement.Domain.DB;
+using JwtTest.Middlewares.CSRF;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        // CSRF check on every unsafe request; see ValidateAntiForgeryTokenFilter.
+        options.Filters.AddService<ValidateAntiForgeryTokenFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
@@ -16,6 +23,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerConfig();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddCors(options =>
 {
@@ -30,9 +38,16 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddDbContext<GSDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
- 
+
+builder.Services.AddJwtAuthServices(builder.Configuration);
+
+// Cloudflare R2 credentials: keep the keys in user-secrets, not appsettings.json
+builder.Services.Configure<R2Options>(builder.Configuration.GetSection(R2Options.SectionName));
+// SMTP for password-reset and email-change mails: keep the password in user-secrets
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
+
 // Add application services
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Environment);
 
 var app = builder.Build();
 
@@ -40,7 +55,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     await app.SeedData();
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.UseSwaggerConfig();
     // app.UseHttpsRedirection();
 }
@@ -48,6 +63,9 @@ if (app.Environment.IsDevelopment())
 // app.UseSwaggerConfig();
 
 app.UseCors("AllowFrontend");
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
-app.MapHub<UserHub>("/api/userhub");
+//add Hub 
+app.UseHubServices();
 app.Run();

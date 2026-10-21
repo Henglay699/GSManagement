@@ -22,6 +22,11 @@ public interface ILeaveRequestService
     /// </summary>
     Task<LeaveRequestDto> UpdateStatusAsync(int id, UpdateLeaveRequestStatusDto dto, int actionedByUserId);
 
+    /// <summary>
+    /// An employee withdraws one of their own pending requests.
+    /// </summary>
+    Task<LeaveRequestDto> CancelOwnAsync(int id, int userId);
+
     Task<LeaveRequestDto> UpdateAsync(int id, UpdateLeaveRequestDto dto, int actionedByUserId);
 
     Task DeleteAsync(int id);

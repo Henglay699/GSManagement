@@ -1,168 +1,56 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
-import {
-  AttendanceTable,
-  Employee,
-  WeekDayInfo,
-  AttendanceRecord,
-} from "../../components/attendance/AttendanceTable";
+import { useCallback, useMemo, useState } from "react";
 import {
   Calendar as CalendarIcon,
-  Filter,
-  RotateCcw,
-  Loader2,
-  CheckCircle2,
-  Clock,
-  Coffee,
-  XCircle,
-  Search,
   ChevronLeft,
   ChevronRight,
+  Filter,
+  Loader2,
+  RotateCcw,
+  Search,
 } from "lucide-react";
-
-interface WeekDayInfoDto {
-  dayName: string;
-  dayNumber: number;
-  date: string;
-  isHoliday?: boolean;
-  holidayName?: string;
-}
-
-type AttendanceStatusValue = "OnTime" | "Late" | "Leave" | "Absent";
-
-interface AttendanceRecordDto {
-  id: number;
-  userId: number;
-  date: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  totalHour?: string;
-  status: AttendanceStatusValue;
-  remark?: string;
-}
-
-interface EmployeeAttendanceDto {
-  id: number;
-  name: string;
-  role: string;
-  avatar?: string;
-  attendance: AttendanceRecordDto[];
-}
-
-interface AttendanceGridResponseDto {
-  weekDates: WeekDayInfoDto[];
-  employees: EmployeeAttendanceDto[];
-}
+import { AttendanceTable } from "../../components/attendance/AttendanceTable";
+import AttendanceSummaryCards from "../../components/attendance/AttendanceSummaryCards";
+import { useAsync } from "../../hooks/useAsync";
+import { fetchAttendanceGrid } from "../../services/attendanceService";
+import type { AttendanceStatus } from "../../types/attendance";
+import { addDays, todayKey } from "../../utils/dateTimeFormatter";
 
 export function AttendancePage() {
-  const getTodayFormatted = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">(
+    "all",
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayFormatted());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useAsync(
+    useCallback(
+      () =>
+        fetchAttendanceGrid(
+          selectedDate,
+          statusFilter === "all" ? undefined : statusFilter,
+        ),
+      [selectedDate, statusFilter],
+    ),
+    "Failed to load attendance grid",
+  );
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const weekDates = useMemo(() => data?.weekDates ?? [], [data]);
+  const employees = useMemo(() => data?.employees ?? [], [data]);
 
-  // Grid Data state
-  const [weekDates, setWeekDates] = useState<WeekDayInfo[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
-
-  // Shift selected date by weeks (-7 or +7 days)
-  const navigateWeek = (daysOffset: number) => {
-    const current = new Date(selectedDate);
-    current.setDate(current.getDate() + daysOffset);
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, "0");
-    const day = String(current.getDate()).padStart(2, "0");
-    setSelectedDate(`${year}-${month}-${day}`);
-  };
-
-  // Fetch Attendance Grid Data using Axios
-  const fetchAttendanceGrid = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.get<AttendanceGridResponseDto>(
-        "/api/admin/attendances/grid",
-        {
-          params: {
-            date: selectedDate,
-            status: statusFilter !== "all" ? statusFilter : undefined,
-          },
-        },
-      );
-
-      const data = response.data;
-
-      const mappedWeekDates: WeekDayInfo[] = data.weekDates.map((w) => ({
-        dayName: w.dayName,
-        dayNumber: w.dayNumber,
-        dateString: w.date,
-        isHoliday: w.isHoliday,
-        holidayName: w.holidayName,
-      }));
-
-      const mappedEmployees: Employee[] = data.employees.map((e) => ({
-        id: e.id,
-        name: e.name,
-        role: e.role,
-        avatar: e.avatar || `https://i.pravatar.cc/150?u=${e.id}`,
-      }));
-
-      const mappedAttendance: AttendanceRecord[] = data.employees.flatMap((e) =>
-        e.attendance.map((a) => ({
-          id: a.id,
-          userId: a.userId,
-          date: a.date,
-          checkInTime: a.checkInTime,
-          checkOutTime: a.checkOutTime,
-          totalHour: a.totalHour,
-          status: a.status,
-          remark: a.remark,
-        })),
-      );
-
-      setWeekDates(mappedWeekDates);
-      setEmployees(mappedEmployees);
-      setAttendanceData(mappedAttendance);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to load attendance grid",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDate, statusFilter]);
-
-  useEffect(() => {
-    fetchAttendanceGrid();
-  }, [fetchAttendanceGrid]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedDate, statusFilter]);
+  // Any filter change goes back to the first page.
+  const resetPage =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setCurrentPage(1);
+      setter(value);
+    };
 
   const filteredEmployees = useMemo(() => {
-    if (!searchQuery.trim()) return employees;
-    return employees.filter((emp) =>
-      emp.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
-    );
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return employees;
+    return employees.filter((emp) => emp.name.toLowerCase().includes(query));
   }, [employees, searchQuery]);
 
   const paginatedEmployees = useMemo(() => {
@@ -173,30 +61,21 @@ export function AttendancePage() {
   const totalPages = Math.ceil(filteredEmployees.length / pageSize) || 1;
 
   const stats = useMemo(() => {
-    const selectedDateRecords = attendanceData.filter(
-      (a) => a.date === selectedDate,
-    );
-
-    const present = selectedDateRecords.filter(
-      (a) => a.status === "OnTime",
-    ).length;
-    const late = selectedDateRecords.filter((a) => a.status === "Late").length;
-    const leave = selectedDateRecords.filter(
-      (a) => a.status === "Leave",
-    ).length;
-    const absent = selectedDateRecords.filter(
-      (a) => a.status === "Absent",
-    ).length;
-
-    const totalEmployees = employees.length;
-    const remainingPeople = Math.max(0, totalEmployees - present);
-
-    return { present, late, leave, absent, remainingPeople };
-  }, [attendanceData, selectedDate, employees]);
+    const records = employees
+      .flatMap((e) => e.attendance)
+      .filter((a) => a.date === selectedDate);
+    const count = (status: AttendanceStatus) =>
+      records.filter((a) => a.status === status).length;
+    return {
+      present: count("OnTime"),
+      late: count("Late"),
+      leave: count("Leave"),
+      absent: count("Absent"),
+    };
+  }, [employees, selectedDate]);
 
   return (
     <div className="w-full space-y-4 text-slate-800 dark:text-zinc-100">
-      {/* Title Header */}
       <div>
         <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
           Employee Attendance Overview
@@ -206,89 +85,11 @@ export function AttendancePage() {
         </p>
       </div>
 
-      {/* Summary Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-              <CheckCircle2 size={13} />
-            </div>
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
-              On Time
-            </span>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              {String(stats.present).padStart(2, "0")}
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-              {stats.remainingPeople} People Remaining
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">
-              <Clock size={13} />
-            </div>
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
-              Late Entry
-            </span>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              {String(stats.late).padStart(2, "0")}
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-              {stats.present} People are on Time
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/50">
-              <Coffee size={13} />
-            </div>
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
-              On Leave
-            </span>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              {String(stats.leave).padStart(2, "0")}
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-              Approved Leave
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50">
-              <XCircle size={13} />
-            </div>
-            <span className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
-              Absent
-            </span>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              {String(stats.absent).padStart(2, "0")}
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500">
-              Without Informing
-            </p>
-          </div>
-        </div>
-      </div>
+      <AttendanceSummaryCards {...stats} totalEmployees={employees.length} />
 
       {/* Control Bar */}
       <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl border border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2 flex-wrap flex-1">
-          {/* Date Input */}
           <div className="relative flex items-center">
             <CalendarIcon
               size={13}
@@ -297,12 +98,11 @@ export function AttendancePage() {
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => resetPage(setSelectedDate)(e.target.value)}
               className="pl-8 pr-2 py-1 bg-emerald-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             />
           </div>
 
-          {/* Status Filter */}
           <div className="relative flex items-center">
             <Filter
               size={12}
@@ -310,7 +110,11 @@ export function AttendancePage() {
             />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) =>
+                resetPage(setStatusFilter)(
+                  e.target.value as AttendanceStatus | "all",
+                )
+              }
               className="pl-7 pr-7 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-100/70 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none"
             >
               <option value="all">All Statuses</option>
@@ -321,7 +125,6 @@ export function AttendancePage() {
             </select>
           </div>
 
-          {/* Search Box */}
           <div className="relative flex items-center flex-1 min-w-[180px] max-w-xs">
             <Search
               size={12}
@@ -331,15 +134,15 @@ export function AttendancePage() {
               type="text"
               placeholder="Search employee..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => resetPage(setSearchQuery)(e.target.value)}
               className="w-full pl-7 pr-2.5 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
 
-          {/* Week Chevron Navigation with Date Display */}
+          {/* Week navigation */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg p-0.5">
             <button
-              onClick={() => navigateWeek(-7)}
+              onClick={() => resetPage(setSelectedDate)(addDays(selectedDate, -7))}
               className="p-1 rounded-md text-slate-600 dark:text-zinc-300 hover:bg-slate-200/60 dark:hover:bg-zinc-700 transition-colors"
               title="Previous Week"
             >
@@ -348,12 +151,12 @@ export function AttendancePage() {
 
             <span className="text-[11px] font-semibold text-slate-700 dark:text-zinc-200 px-1.5 whitespace-nowrap">
               {weekDates.length > 0
-                ? `${weekDates[0].dateString} – ${weekDates[weekDates.length - 1].dateString}`
+                ? `${weekDates[0].date} – ${weekDates[weekDates.length - 1].date}`
                 : selectedDate}
             </span>
 
             <button
-              onClick={() => navigateWeek(7)}
+              onClick={() => resetPage(setSelectedDate)(addDays(selectedDate, 7))}
               className="p-1 rounded-md text-slate-600 dark:text-zinc-300 hover:bg-slate-200/60 dark:hover:bg-zinc-700 transition-colors"
               title="Next Week"
             >
@@ -364,6 +167,7 @@ export function AttendancePage() {
           {(statusFilter !== "all" || searchQuery) && (
             <button
               onClick={() => {
+                setCurrentPage(1);
                 setStatusFilter("all");
                 setSearchQuery("");
               }}
@@ -383,18 +187,15 @@ export function AttendancePage() {
         )}
       </div>
 
-      {/* Error Banner */}
       {error && (
         <div className="p-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-lg text-[11px] font-medium">
           {error}
         </div>
       )}
 
-      {/* Table Grid */}
       <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xs overflow-hidden">
         <AttendanceTable
           employees={paginatedEmployees}
-          attendanceData={attendanceData}
           weekDates={weekDates}
           selectedDate={selectedDate}
         />
@@ -405,10 +206,7 @@ export function AttendancePage() {
             <span>Rows per page:</span>
             <select
               value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
+              onChange={(e) => resetPage(setPageSize)(Number(e.target.value))}
               className="bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded px-1.5 py-0.5 font-semibold text-slate-700 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
               <option value={5}>5</option>

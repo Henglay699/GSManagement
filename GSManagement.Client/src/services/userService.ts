@@ -1,59 +1,67 @@
-import axios from "axios";
-import { User } from "../models/user";
-
-export interface UserFormData {
-  userName: string;
-  email: string;
-  isActive: boolean;
-  password?: string;
-  roleIds?: number[];
-}
-
-export interface PagedResult<T> {
-  items: T[];
-  totalCount: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-}
+import { api } from "../lib/api";
+import type { PagedResult } from "../types/common";
+import type { User, UserFormData, UserOption } from "../types/user";
 
 export const fetchUsers = async (
   pageNumber: number,
   pageSize: number,
   searchTerm: string,
 ): Promise<PagedResult<User>> => {
-  const response = await axios.get<PagedResult<User>>("/api/user", {
+  const response = await api.get<PagedResult<User>>("/user", {
     params: { pageNumber, pageSize, searchTerm },
   });
   return response.data;
 };
 
-// Get User By ID
-export const fetchUsersById = async (id: number): Promise<User> => {
-  const response = await axios.get<User>(`/api/user/${id}`);
+export const fetchUserById = async (id: number): Promise<User> => {
+  const response = await api.get<User>(`/user/${id}`);
   return response.data;
 };
 
-// Create User
+// All users in a lightweight shape, for employee pickers.
+export const fetchUserOptions = async (): Promise<UserOption[]> => {
+  const response = await api.get<UserOption[]>("/user/select-options");
+  return response.data;
+};
+
 export const createUser = async (data: UserFormData): Promise<User> => {
-  const response = await axios.post<User>("/api/user", data);
+  const response = await api.post<User>("/user", data);
   return response.data;
 };
 
-// Update User
 export const updateUser = async (
   id: number,
   data: UserFormData,
 ): Promise<User> => {
-  const response = await axios.put<User>(`/api/user/${id}`, data);
+  // The update endpoint calls it NewPassword (blank = keep the current one);
+  // only create uses Password.
+  const { password, ...rest } = data;
+  const response = await api.put<User>(`/user/${id}`, {
+    ...rest,
+    newPassword: password,
+  });
   return response.data;
 };
 
-// Delete User By ID
-export const deleteUser = async (id: number) => {
-  try {
-    await axios.delete(`/api/user/${id}`);
-  } catch (error) {
-    console.error("Failed to delete user:", error);
-  }
+export const deleteUser = async (id: number): Promise<void> => {
+  await api.delete(`/user/${id}`);
+};
+
+// Uploads a new photo, replacing the current one. Returns the new image URL.
+export const uploadUserPhoto = async (
+  id: number,
+  file: File,
+): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  // Axios sets the multipart Content-Type (with boundary) for FormData itself.
+  const response = await api.put<{ imageUrl: string }>(
+    `/user/${id}/photo`,
+    formData,
+  );
+  return response.data.imageUrl;
+};
+
+export const removeUserPhoto = async (id: number): Promise<void> => {
+  await api.delete(`/user/${id}/photo`);
 };

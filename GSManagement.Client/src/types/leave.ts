@@ -1,9 +1,8 @@
-// Mirrors GSManagement.Application.DTOs.LeaveRequests + the Enums namespace.
-// Keep these in sync with the C# side (or generate them from an OpenAPI spec).
-
 export type LeaveType = "Sick" | "Maternity" | "Emergency" | "Personal";
 
 export type LeaveStatus = "Pending" | "Approved" | "Reject" | "Cancel";
+
+export type HalfDayPeriod = "Morning" | "Afternoon";
 
 export interface LeaveRequestDto {
   id: number;
@@ -19,6 +18,8 @@ export interface LeaveRequestDto {
   createdAt: string;
   approverName?: string | null;
   actionedAt?: string | null;
+  isHalfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
 }
 
 export interface CreateLeaveRequestDto {
@@ -28,6 +29,25 @@ export interface CreateLeaveRequestDto {
   endDate: string;
   remark?: string;
   initialStatus: LeaveStatus;
+  isHalfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
+}
+
+// POST /api/employee/leaves: the employee is taken from the login.
+export type CreateMyLeaveRequestDto = Omit<
+  CreateLeaveRequestDto,
+  "userId" | "initialStatus"
+>;
+
+export interface UpdateLeaveRequestDto {
+  userId: number;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  status: LeaveStatus;
+  remark?: string;
+  isHalfDay?: boolean;
+  halfDayPeriod?: HalfDayPeriod | null;
 }
 
 export interface UpdateLeaveRequestStatusDto {
@@ -46,20 +66,4 @@ export interface LeaveRequestFilter {
   pageSize: number;
 }
 
-export interface PagedResult<T> {
-  items: T[];
-  totalCount: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface EmployeeOption {
-  id: number;
-  userName: string;
-  imageUrl?: string | null;
-}
-
-export interface ApiErrorBody {
-  message?: string;
-}
+export const LEAVE_TYPES: LeaveType[] = ["Sick", "Maternity", "Emergency", "Personal"];

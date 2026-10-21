@@ -1,3 +1,4 @@
+using JwtTest.Middlewares.CheckPermission;
 using GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
 using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.Entities.Enums;
@@ -12,6 +13,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     private readonly IAttendanceService _attendanceService = attendanceService;
 
     [HttpGet("grid")]
+    [HasPermission(AppPermission.ViewAttendance)]
     public async Task<ActionResult<AttendanceGridResponseDto>> GetGrid(
         [FromQuery] DateOnly? date,
         [FromQuery] AttendanceStatus? status)
@@ -22,14 +24,15 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     }
 
     [HttpGet("{id:int}")]
+    [HasPermission(AppPermission.ViewAttendance)]
     public async Task<ActionResult<AttendanceRecordDto>> GetById(int id)
     {
         var result = await _attendanceService.GetByIdAsync(id);
         return result is null ? NotFound() : Ok(result);
     }
 
-    [HttpPost]
-    // [HasPermission(AppPermission.CreateAttendance)]
+    [HttpPost]
+    [HasPermission(AppPermission.CreateAttendance)]
     public async Task<ActionResult<AttendanceRecordDto>> Create([FromBody] CreateAttendanceDto dto)
     {
         try
@@ -48,6 +51,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     }
 
     [HttpPut("{id:int}")]
+    [HasPermission(AppPermission.UpdateAttendance)]
     public async Task<ActionResult<AttendanceRecordDto>> Update(int id, [FromBody] CreateAttendanceDto dto)
     {
         try
@@ -65,6 +69,7 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     // Powers UserAttendanceDetailPage.tsx: user profile + full-month summary
     // + day-by-day check-in/check-out records.
     [HttpGet("user/{id:int}")]
+    [HasPermission(AppPermission.ViewAttendance)]
     public async Task<ActionResult<UserAttendanceDetailDto>> GetUserAttendanceDetail(int id, [FromQuery] string month)
     {
         if (!DateParser.TryParseMonth(month, out var year, out var monthNumber))

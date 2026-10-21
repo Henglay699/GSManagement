@@ -2,11 +2,12 @@ using GSManagement.Api.Features.RoleFeature.DTOs;
 using GSManagement.Api.Shared.Models;
 using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
+using JwtTest.Middlewares.CheckPermission;
 using Microsoft.EntityFrameworkCore;
 
 namespace GSManagement.Api.Features.RoleFeature;
 
-public class RoleService(GSDbContext context) : IRoleService
+public class RoleService(GSDbContext context, UserAccessCache accessCache) : IRoleService
 {
     public async Task<Result<RoleResponse>> GetRoleByIdAsync(int Id, CancellationToken cancellationToken)
     {
@@ -158,6 +159,7 @@ public class RoleService(GSDbContext context) : IRoleService
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        await accessCache.InvalidateAsync(await GetUserIdsInRoleAsync(Id, cancellationToken), cancellationToken);
 
         var assignedPermissionNames = role.Permissions
                 .Select(p => new PermissionResponse(p.Id, p.PermissionName.ToString(), p.Module.ToString())).ToList();
@@ -176,9 +178,20 @@ public class RoleService(GSDbContext context) : IRoleService
             return Result<bool>.Fail("Role not found", ErrorType.NotFound);
         }
 
+        // Read before deleting: the role's user links are removed with it.
+        var affectedUserIds = await GetUserIdsInRoleAsync(Id, cancellationToken);
+
         context.Roles.Remove(role);
         await context.SaveChangesAsync(cancellationToken);
+        await accessCache.InvalidateAsync(affectedUserIds, cancellationToken);
 
         return Result<bool>.Success(true);
     }
+
+    private Task<List<int>> GetUserIdsInRoleAsync(int roleId, CancellationToken cancellationToken) =>
+        context.Roles
+            .Where(r => r.Id == roleId)
+            .SelectMany(r => r.Users)
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
 }

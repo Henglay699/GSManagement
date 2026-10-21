@@ -1,10 +1,9 @@
-import React from "react";
-import { CheckCircle2, Clock, Coffee, XCircle, Ban } from "lucide-react";
-
-export type AttendanceStatusValue = "OnTime" | "Late" | "Leave" | "Absent";
+﻿import React from "react";
+import { CheckCircle2, Clock, Coffee, XCircle, Ban, Hourglass } from "lucide-react";
+import type { AttendanceStatus } from "../../types/attendance";
 
 interface StatusBadgeProps {
-  status: AttendanceStatusValue;
+  status: AttendanceStatus;
   totalHour?: number | string;
 }
 
@@ -43,6 +42,17 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
             className="text-purple-600 dark:text-purple-400 shrink-0"
           />
           <span>On Leave</span>
+        </span>
+      );
+
+    case "HalfDayLeave":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-800 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/50 px-2 py-0.5 rounded-md">
+          <Hourglass
+            size={12}
+            className="text-indigo-600 dark:text-indigo-400 shrink-0"
+          />
+          <span>Half-Day Leave</span>
         </span>
       );
 

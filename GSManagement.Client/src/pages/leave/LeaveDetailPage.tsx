@@ -1,104 +1,53 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { ReactNode, useCallback, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
-  Clock,
-  User,
-  FileText,
+  CalendarDays,
   Check,
-  AlertCircle,
+  Clock,
+  FileText,
   Loader2,
   ShieldCheck,
-  CalendarDays,
+  User,
 } from "lucide-react";
-import type {
-  LeaveRequestDto,
-  LeaveStatus,
-  ApiErrorBody,
-} from "../../types/leave";
-
-const API_BASE = "/api";
-
-async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    ...options,
-  });
-
-  if (!res.ok) {
-    const body: ApiErrorBody = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed (${res.status})`);
-  }
-
-  return res.status === 204 ? (null as T) : ((await res.json()) as T);
-}
-
-const STATUS_STYLES: Record<LeaveStatus, string> = {
-  Pending:
-    "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-800/50",
-  Approved:
-    "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-800/50",
-  Reject:
-    "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-800/50",
-  Cancel:
-    "bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 ring-slate-500/20 dark:ring-zinc-700/50",
-};
+import { useAsync } from "../../hooks/useAsync";
+import { getErrorMessage } from "../../lib/api";
+import {
+  fetchLeaveRequestById,
+  updateLeaveRequestStatus,
+} from "../../services/leaveService";
+import LeaveStatusBadge from "../../components/leave/LeaveStatusBadge";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
 
 export default function LeaveDetailPage() {
+  const { hasPermission } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const requestId = Number(id);
 
-  const [request, setRequest] = useState<LeaveRequestDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [actioning, setActioning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!requestId) return;
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
-
-    apiFetch<LeaveRequestDto>(`/leave-requests/${requestId}`)
-      .then((data) => {
-        if (isMounted) setRequest(data);
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load details.",
-          );
-        }
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [requestId]);
+  const {
+    data: request,
+    loading,
+    error: loadError,
+  } = useAsync(
+    useCallback(() => fetchLeaveRequestById(requestId), [requestId]),
+    "Failed to load details.",
+  );
+  const error = actionError ?? loadError;
 
   async function handleApprove() {
-    if (!requestId) return;
     setActioning(true);
     try {
-      await apiFetch(`/leave-requests/${requestId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "Approved" }),
-      });
+      await updateLeaveRequestStatus(requestId, { status: "Approved" });
       navigate(-1);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to approve request.",
-      );
+      setActionError(getErrorMessage(err, "Failed to approve request."));
     } finally {
       setActioning(false);
     }
@@ -106,7 +55,6 @@ export default function LeaveDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      {/* Top Header & Back Button */}
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
@@ -143,13 +91,7 @@ export default function LeaveDetailPage() {
                 </p>
               </div>
             </div>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
-                STATUS_STYLES[request.status]
-              }`}
-            >
-              {request.status}
-            </span>
+            <LeaveStatusBadge status={request.status} size="md" />
           </div>
 
           <div className="space-y-6 p-6">
@@ -178,37 +120,17 @@ export default function LeaveDetailPage() {
 
             {/* Information Grid */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500">
-                  <CalendarDays size={16} />
-                  <span>Leave Type</span>
-                </div>
-                <p className="mt-2 text-base font-medium text-slate-800 dark:text-zinc-200">
-                  {request.leaveType}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500">
-                  <Clock size={16} />
-                  <span>Duration</span>
-                </div>
-                <p className="mt-2 text-base font-medium text-slate-800 dark:text-zinc-200">
-                  {request.totalDays}{" "}
-                  {request.totalDays === 1 ? "Working Day" : "Working Days"}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500">
-                  <Calendar size={16} />
-                  <span>Date Range</span>
-                </div>
-                <p className="mt-2 text-base font-semibold text-slate-800 dark:text-zinc-200">
-                  {request.startDate} <span className="text-slate-400">→</span>{" "}
-                  {request.endDate}
-                </p>
-              </div>
+              <InfoTile icon={<CalendarDays size={16} />} label="Leave Type">
+                {request.leaveType}
+              </InfoTile>
+              <InfoTile icon={<Clock size={16} />} label="Duration">
+                {request.totalDays}{" "}
+                {request.totalDays === 1 ? "Working Day" : "Working Days"}
+              </InfoTile>
+              <InfoTile icon={<Calendar size={16} />} label="Date Range">
+                {request.startDate} <span className="text-slate-400">→</span>{" "}
+                {request.endDate}
+              </InfoTile>
             </div>
 
             {/* Remark Section */}
@@ -225,7 +147,6 @@ export default function LeaveDetailPage() {
               </p>
             </div>
 
-            {/* Audit / Action Metadata */}
             {request.approverName && (
               <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-800/40 dark:text-zinc-300">
                 <ShieldCheck size={16} className="text-emerald-600" />
@@ -236,8 +157,8 @@ export default function LeaveDetailPage() {
             )}
           </div>
 
-          {/* Action Bar */}
-          {request.status === "Pending" && (
+          {request.status === "Pending" &&
+            hasPermission(Permission.UpdateLeave) && (
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
               <button
                 disabled={actioning}
@@ -250,6 +171,28 @@ export default function LeaveDetailPage() {
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function InfoTile({
+  icon,
+  label,
+  children,
+}: {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
+      <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-2 text-base font-medium text-slate-800 dark:text-zinc-200">
+        {children}
+      </p>
     </div>
   );
 }

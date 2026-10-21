@@ -20,6 +20,13 @@ public class LeaveRequestConfig : IEntityTypeConfiguration<LeaveRequest>
 
         builder.Property(u => u.Remark).HasMaxLength(120);
 
+        builder.Property(u => u.IsHalfDay)
+            .HasDefaultValue(false);
+
+        builder.Property(u => u.HalfDayPeriod)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         // Relationship 1: LeaveRequest -> Employee (User)
         builder.HasOne(l => l.User)
             .WithMany() // Or a collection property if you add LeaveRequests to User.cs

@@ -19,5 +19,8 @@ public enum AppPermission
 
     //Client
     ViewClient, CreateClient, UpdateClient, DeleteClient,
+
+    // Shift
+    ViewShift, CreateShift, UpdateShift, DeleteShift,
 }
 

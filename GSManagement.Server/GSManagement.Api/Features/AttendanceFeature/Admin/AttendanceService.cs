@@ -51,6 +51,7 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
 
         // 4. Fetch attendance records within week range (filtered by status if provided)
         var attendanceQuery = _context.Attendances
+            .Include(a => a.Shift)
             .AsNoTracking()
             .Where(a => a.Date >= monday && a.Date <= sunday);
 
@@ -80,6 +81,11 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
                     TotalHour = a.TotalHour.HasValue
                         ? $"{(int)a.TotalHour.Value}h {(int)((a.TotalHour.Value % 1) * 60)}m"
                         : null,
+                    OvertimeMinutes = a.OvertimeMinutes,
+                    IsHalfDay = a.IsHalfDay,
+                    HalfDayPeriod = a.HalfDayPeriod,
+                    ShiftId = a.ShiftId,
+                    ShiftName = a.Shift?.Name,
                     Status = a.Status,
                     Remark = a.Remark
                 })
@@ -100,16 +106,23 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             throw new InvalidOperationException("Check-in time cannot be later than check-out time.");
         }
 
-        var checkInTimeGracePeriod = new TimeOnly(8, 15);
+        var shift = (dto.ShiftId.HasValue ? await _context.Shifts.FindAsync(dto.ShiftId.Value) : null)
+            ?? await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault)
+            ?? await _context.Shifts.FirstOrDefaultAsync();
+
+        var shiftStart = shift?.StartTime ?? new TimeOnly(8, 0);
+        var shiftEnd = shift?.EndTime ?? new TimeOnly(17, 0);
+        var graceMinutes = shift?.GraceMinutes ?? 15;
+        var checkInTimeGracePeriod = shiftStart.AddMinutes(graceMinutes);
 
         if (dto.CheckInTime.HasValue && dto.CheckInTime > checkInTimeGracePeriod && dto.Status == AttendanceStatus.OnTime)
         {
-            throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
+            throw new InvalidOperationException($"Check-in time is later than {checkInTimeGracePeriod:HH:mm}. Please mark the status as 'Late' instead of 'OnTime'.");
         }
 
-        if (dto.CheckInTime.HasValue && dto.CheckInTime < checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
+        if (dto.CheckInTime.HasValue && dto.CheckInTime <= checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
         {
-            throw new InvalidOperationException("Check-in time is earlier than 8:15 AM. Please mark the status as 'OnTime' instead of 'Late'.");
+            throw new InvalidOperationException($"Check-in time is within the grace period (before {checkInTimeGracePeriod:HH:mm}). Please mark the status as 'OnTime' instead of 'Late'.");
         }
 
         var existing = await _context.Attendances
@@ -130,6 +143,12 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         if (dto.Date.DayOfWeek == DayOfWeek.Sunday)
             throw new InvalidOperationException($"Cannot create attendance record on Dayoff Sunday ({dto.Date}).");
 
+        double? overtimeMinutes = dto.OvertimeMinutes;
+        if (!overtimeMinutes.HasValue && dto.CheckOutTime.HasValue && dto.CheckOutTime.Value > shiftEnd)
+        {
+            overtimeMinutes = Math.Round((dto.CheckOutTime.Value - shiftEnd).TotalMinutes, 0);
+        }
+
         var attendance = new Attendance
         {
             UserId = dto.UserId,
@@ -138,11 +157,26 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             CheckOutTime = dto.CheckOutTime,
             Status = dto.Status,
             Remark = dto.Remark,
-            LeaveRequestId = dto.LeaveRequestId
+            LeaveRequestId = dto.LeaveRequestId,
+            ShiftId = shift?.Id,
+            OvertimeMinutes = overtimeMinutes,
+            IsHalfDay = dto.IsHalfDay,
+            HalfDayPeriod = dto.HalfDayPeriod
         };
 
         _context.Attendances.Add(attendance);
         await _context.SaveChangesAsync();
+
+        if (overtimeMinutes.HasValue && overtimeMinutes.Value > 0)
+        {
+            _context.OvertimeRecords.Add(new OvertimeRecord
+            {
+                AttendanceId = attendance.Id,
+                OvertimeMinutes = overtimeMinutes.Value,
+                Reason = "Admin attendance record overtime"
+            });
+            await _context.SaveChangesAsync();
+        }
 
         return new AttendanceRecordDto
         {
@@ -154,6 +188,11 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             TotalHour = attendance.TotalHour.HasValue
                 ? $"{(int)attendance.TotalHour.Value}h {(int)((attendance.TotalHour.Value % 1) * 60)}m"
                 : null,
+            OvertimeMinutes = attendance.OvertimeMinutes,
+            IsHalfDay = attendance.IsHalfDay,
+            HalfDayPeriod = attendance.HalfDayPeriod,
+            ShiftId = attendance.ShiftId,
+            ShiftName = shift?.Name,
             Status = attendance.Status,
             Remark = attendance.Remark
         };
@@ -162,6 +201,7 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
     public async Task<AttendanceRecordDto?> GetByIdAsync(int id)
     {
         var attendance = await _context.Attendances
+            .Include(a => a.Shift)
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id);
 
@@ -177,6 +217,11 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             TotalHour = attendance.TotalHour.HasValue
                 ? $"{(int)attendance.TotalHour.Value}h {(int)((attendance.TotalHour.Value % 1) * 60)}m"
                 : null,
+            OvertimeMinutes = attendance.OvertimeMinutes,
+            IsHalfDay = attendance.IsHalfDay,
+            HalfDayPeriod = attendance.HalfDayPeriod,
+            ShiftId = attendance.ShiftId,
+            ShiftName = attendance.Shift?.Name,
             Status = attendance.Status,
             Remark = attendance.Remark
         };
@@ -198,6 +243,7 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
 
         var monthAttendance = await _context.Attendances
+            .Include(a => a.Shift)
             .AsNoTracking()
             .Where(a =>
                 a.UserId == userId &&
@@ -212,6 +258,8 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             Late = monthAttendance.Count(a => a.Status == AttendanceStatus.Late),
             Absent = monthAttendance.Count(a => a.Status == AttendanceStatus.Absent),
             Leave = monthAttendance.Count(a => a.Status == AttendanceStatus.Leave),
+            HalfDayLeave = monthAttendance.Count(a => a.Status == AttendanceStatus.HalfDayLeave),
+            TotalOvertimeHours = Math.Round(monthAttendance.Where(a => a.OvertimeMinutes.HasValue).Sum(a => a.OvertimeMinutes!.Value) / 60.0, 2)
         };
 
         var records = monthAttendance.ConvertAll(a => new DayAttendanceRecordDto
@@ -223,6 +271,10 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             TotalHour = a.TotalHour.HasValue
                 ? $"{(int)a.TotalHour.Value}h {(int)((a.TotalHour.Value % 1) * 60)}m"
                 : null,
+            OvertimeMinutes = a.OvertimeMinutes,
+            IsHalfDay = a.IsHalfDay,
+            HalfDayPeriod = a.HalfDayPeriod,
+            ShiftName = a.Shift?.Name,
             Status = a.Status,
             Remark = a.Remark,
             LeaveRequestId = a.LeaveRequestId
@@ -269,24 +321,32 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             throw new InvalidOperationException("Check-in time cannot be later than check-out time.");
         }
 
-        var checkInTimeGracePeriod = new TimeOnly(8, 15);
+        var attendance = await _context.Attendances.Include(a => a.Shift).FirstOrDefaultAsync(a => a.Id == id);
+        if (attendance == null) return null;
+
+        if (attendance.Status == AttendanceStatus.Leave && !attendance.IsHalfDay)
+        {
+            throw new InvalidOperationException("Attendance records associated with approved full-day leave cannot be edited manually.");
+        }
+
+        var shift = (dto.ShiftId.HasValue ? await _context.Shifts.FindAsync(dto.ShiftId.Value) : null)
+            ?? attendance.Shift
+            ?? await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault)
+            ?? await _context.Shifts.FirstOrDefaultAsync();
+
+        var shiftStart = shift?.StartTime ?? new TimeOnly(8, 0);
+        var shiftEnd = shift?.EndTime ?? new TimeOnly(17, 0);
+        var graceMinutes = shift?.GraceMinutes ?? 15;
+        var checkInTimeGracePeriod = shiftStart.AddMinutes(graceMinutes);
 
         if (dto.CheckInTime.HasValue && dto.CheckInTime > checkInTimeGracePeriod && dto.Status == AttendanceStatus.OnTime)
         {
-            throw new InvalidOperationException("Check-in time is later than 8:15 AM. Please mark the status as 'Late' instead of 'OnTime'.");
+            throw new InvalidOperationException($"Check-in time is later than {checkInTimeGracePeriod:HH:mm}. Please mark the status as 'Late' instead of 'OnTime'.");
         }
 
-        if (dto.CheckInTime.HasValue && dto.CheckInTime < checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
+        if (dto.CheckInTime.HasValue && dto.CheckInTime <= checkInTimeGracePeriod && dto.Status == AttendanceStatus.Late)
         {
-            throw new InvalidOperationException("Check-in time is earlier than 8:15 AM. Please mark the status as 'OnTime' instead of 'Late'.");
-        }
-
-        var attendance = await _context.Attendances.FirstOrDefaultAsync(a => a.Id == id);
-        if (attendance == null) return null;
-
-        if (attendance.Status == AttendanceStatus.Leave)
-        {
-            throw new InvalidOperationException("Attendance records associated with approved leave cannot be edited manually.");
+            throw new InvalidOperationException($"Check-in time is within the grace period (before {checkInTimeGracePeriod:HH:mm}). Please mark the status as 'OnTime' instead of 'Late'.");
         }
 
         TimeOnly? checkIn = dto.CheckInTime.HasValue ? dto.CheckInTime : null;
@@ -296,6 +356,34 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
         attendance.CheckOutTime = dto.Status == AttendanceStatus.Absent ? null : checkOut;
         attendance.Status = dto.Status;
         attendance.Remark = dto.Remark;
+        attendance.ShiftId = shift?.Id;
+        attendance.IsHalfDay = dto.IsHalfDay;
+        attendance.HalfDayPeriod = dto.HalfDayPeriod;
+
+        double? overtimeMinutes = dto.OvertimeMinutes;
+        if (!overtimeMinutes.HasValue && attendance.CheckOutTime.HasValue && attendance.CheckOutTime.Value > shiftEnd)
+        {
+            overtimeMinutes = Math.Round((attendance.CheckOutTime.Value - shiftEnd).TotalMinutes, 0);
+        }
+        attendance.OvertimeMinutes = overtimeMinutes;
+
+        if (overtimeMinutes.HasValue && overtimeMinutes.Value > 0)
+        {
+            var otRecord = await _context.OvertimeRecords.FirstOrDefaultAsync(o => o.AttendanceId == attendance.Id);
+            if (otRecord is null)
+            {
+                _context.OvertimeRecords.Add(new OvertimeRecord
+                {
+                    AttendanceId = attendance.Id,
+                    OvertimeMinutes = overtimeMinutes.Value,
+                    Reason = "Admin attendance record overtime"
+                });
+            }
+            else
+            {
+                otRecord.OvertimeMinutes = overtimeMinutes.Value;
+            }
+        }
 
         _context.Attendances.Update(attendance);
         await _context.SaveChangesAsync();
@@ -310,9 +398,13 @@ public class AttendanceService(GSDbContext context) : IAttendanceService
             TotalHour = attendance.TotalHour.HasValue
                 ? $"{(int)attendance.TotalHour.Value}h {(int)((attendance.TotalHour.Value % 1) * 60)}m"
                 : null,
+            OvertimeMinutes = attendance.OvertimeMinutes,
+            IsHalfDay = attendance.IsHalfDay,
+            HalfDayPeriod = attendance.HalfDayPeriod,
+            ShiftId = attendance.ShiftId,
+            ShiftName = shift?.Name,
             Status = attendance.Status,
             Remark = attendance.Remark
         };
     }
-
 }

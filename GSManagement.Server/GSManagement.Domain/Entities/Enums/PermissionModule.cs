@@ -6,6 +6,8 @@ public enum PermissionModule
     Role,
     Permission,
     Attendance,
-    Client
+    Client,
+    Leave,
+    Shift
 }
 

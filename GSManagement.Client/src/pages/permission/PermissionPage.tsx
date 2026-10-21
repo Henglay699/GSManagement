@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   KeyRound,
@@ -12,42 +12,27 @@ import {
   Calendar,
   Lock,
 } from "lucide-react";
-import axios from "axios";
-import Permission from "../../models/permission";
-import { fetchPermissions } from "../../services/permissionservice";
-import { formatDate } from "../../utils/datetimeformater";
+import { useAsync } from "../../hooks/useAsync";
+import { paths } from "../../lib/paths";
+import { fetchPermissions } from "../../services/permissionService";
+import { formatDate } from "../../utils/dateTimeFormatter";
 
 function PermissionPage() {
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedModule, setSelectedModule] = useState<string>("All");
-  const [errorMessage, setErrorMessage] = useState<string>();
 
   // Pagination states
   const [pageNumber, setPageNumber] = useState<number>(1);
   const pageSize = 10;
 
-  useEffect(() => {
-    const loadPermissions = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchPermissions();
-        setPermissions(data ?? []);
-        setErrorMessage(undefined);
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          setErrorMessage("Backend server can't be reached.");
-        } else {
-          setErrorMessage("An unexpected error occurred");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPermissions();
-  }, []);
+  const {
+    data: permissions = [],
+    loading,
+    error: errorMessage,
+  } = useAsync(
+    useCallback(() => fetchPermissions(), []),
+    "An unexpected error occurred",
+  );
 
   // Filter modules options
   const modules = [
@@ -143,7 +128,9 @@ function PermissionPage() {
 
           <div className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
             Total System Permissions:{" "}
-            <span className="font-bold text-slate-800 dark:text-zinc-100">{totalCount}</span>
+            <span className="font-bold text-slate-800 dark:text-zinc-100">
+              {totalCount}
+            </span>
           </div>
         </div>
 
@@ -155,7 +142,7 @@ function PermissionPage() {
               Fetching permission schema...
             </span>
           </div>
-        ) : errorMessage != null ? (
+        ) : errorMessage ? (
           <div className="py-12 text-center text-xs font-medium text-rose-500 dark:text-rose-400">
             {errorMessage}
           </div>
@@ -200,8 +187,8 @@ function PermissionPage() {
                           </div>
                           <div>
                             <Link
-                              to={`/permission/detail/${perm.id}`}
-                              className="!no-underline font-semibold text-slate-800 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition-colors font-mono"
+                              to={paths.permissionDetail(perm.id)}
+                              className="font-semibold text-slate-800 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition-colors font-mono"
                             >
                               {perm.permissionName}
                             </Link>
@@ -215,7 +202,10 @@ function PermissionPage() {
                       {/* Module Tag */}
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900">
-                          <Layers size={11} className="text-indigo-500 dark:text-indigo-400" />
+                          <Layers
+                            size={11}
+                            className="text-indigo-500 dark:text-indigo-400"
+                          />
                           {perm.module || "General"}
                         </span>
                       </td>
@@ -249,8 +239,8 @@ function PermissionPage() {
                       {/* Detail View Button */}
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
                         <Link
-                          to={`/permission/detail/${perm.id}`}
-                          className="!no-underline inline-flex items-center gap-1 px-2.5 py-1 text-slate-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-xs font-medium"
+                          to={paths.permissionDetail(perm.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-xs font-medium"
                           title="View Details"
                         >
                           <Eye size={14} />

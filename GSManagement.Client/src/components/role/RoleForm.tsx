@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import Role from "../../models/role";
-import Permission from "../../models/permission";
-import { fetchPermissions } from "../../services/permissionservice";
+import React, { useCallback, useState } from "react";
+import { useAsync } from "../../hooks/useAsync";
+import { fetchPermissions } from "../../services/permissionService";
+import type { Permission } from "../../types/permission";
+import type { Role, RoleFormData } from "../../types/role";
 import {
   Loader2,
   Shield,
@@ -15,11 +16,7 @@ import {
 
 interface RoleFormProps {
   initialData?: Role;
-  onSubmit: (
-    roleName: string,
-    description: string,
-    permissionIds: number[],
-  ) => Promise<void>;
+  onSubmit: (data: RoleFormData) => Promise<void>;
   isSubmitting: boolean;
   buttonText: string;
   errorMessage?: string;
@@ -42,25 +39,10 @@ function RoleForm({
     initialData?.permissions?.map((p) => p.id) || [],
   );
 
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loadingPerms, setLoadingPerms] = useState<boolean>(false);
-
-  useEffect(() => {
-    const loadPermissions = async () => {
-      setLoadingPerms(true);
-
-      try {
-        const data = await fetchPermissions();
-        setPermissions(data);
-      } catch (err) {
-        console.error("Failed to load permissions", err);
-      } finally {
-        setLoadingPerms(false);
-      }
-    };
-
-    loadPermissions();
-  }, []);
+  const { data: permissions = [], loading: loadingPerms } = useAsync(
+    useCallback(() => fetchPermissions(), []),
+    "Failed to load permissions.",
+  );
 
   const groupedPermissions = permissions.reduce<Record<string, Permission[]>>(
     (acc, perm) => {
@@ -108,7 +90,11 @@ function RoleForm({
       return;
     }
 
-    onSubmit(roleName.trim(), description.trim(), selectedPermissionIds);
+    onSubmit({
+      roleName: roleName.trim(),
+      description: description.trim(),
+      permissionIds: selectedPermissionIds,
+    });
   };
 
   return (
@@ -116,12 +102,17 @@ function RoleForm({
       {/* API Error */}
       {errorMessage && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-950/40 px-3.5 py-3 text-xs text-rose-700 dark:text-rose-300">
-          <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-500 dark:text-rose-400" />
+          <AlertCircle
+            size={15}
+            className="mt-0.5 shrink-0 text-rose-500 dark:text-rose-400"
+          />
 
           <div>
             <p className="font-semibold">Unable to save role</p>
 
-            <p className="mt-0.5 text-rose-600 dark:text-rose-400">{errorMessage}</p>
+            <p className="mt-0.5 text-rose-600 dark:text-rose-400">
+              {errorMessage}
+            </p>
           </div>
         </div>
       )}
@@ -136,7 +127,10 @@ function RoleForm({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
-                <Shield size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <Shield
+                  size={16}
+                  className="text-indigo-600 dark:text-indigo-400"
+                />
               </div>
 
               <h4 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
@@ -205,7 +199,10 @@ function RoleForm({
           <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
-                <LockKeyhole size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <LockKeyhole
+                  size={14}
+                  className="text-indigo-600 dark:text-indigo-400"
+                />
               </div>
 
               <div>
@@ -265,7 +262,10 @@ function RoleForm({
               </p>
             </div>
 
-            <KeyRound size={17} className="text-indigo-500 dark:text-indigo-400" />
+            <KeyRound
+              size={17}
+              className="text-indigo-500 dark:text-indigo-400"
+            />
           </div>
 
           {/* Scrollable Matrix */}
@@ -304,7 +304,10 @@ function RoleForm({
                     <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-800">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center shrink-0">
-                          <Layers size={13} className="text-indigo-600 dark:text-indigo-400" />
+                          <Layers
+                            size={13}
+                            className="text-indigo-600 dark:text-indigo-400"
+                          />
                         </div>
 
                         <div className="min-w-0">

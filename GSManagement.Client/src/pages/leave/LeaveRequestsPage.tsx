@@ -1,302 +1,106 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-  FormEvent,
-} from "react";
-import {
-  Check,
-  X,
-  Plus,
-  Search,
-  Loader2,
-  AlertCircle,
-  Trash2,
-  ChevronDown,
-} from "lucide-react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import type {
-  LeaveRequestDto,
-  CreateLeaveRequestDto,
-  LeaveStatus,
-  LeaveType,
-  PagedResult,
-  EmployeeOption,
-  ApiErrorBody,
-} from "../../types/leave";
+import { AlertCircle, Check, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { useAsync } from "../../hooks/useAsync";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { getErrorMessage } from "../../lib/api";
+import { paths } from "../../lib/paths";
+import {
+  deleteLeaveRequest,
+  fetchLeaveRequests,
+  updateLeaveRequestStatus,
+} from "../../services/leaveService";
+import type { LeaveRequestDto } from "../../types/leave";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import LeaveFormModal from "../../components/leave/LeaveFormModal";
+import LeaveStatusBadge from "../../components/leave/LeaveStatusBadge";
+import RejectLeaveModal from "../../components/leave/RejectLeaveModal";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
 
-const API_BASE = "/api";
-
-async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    ...options,
-  });
-
-  if (!res.ok) {
-    const body: ApiErrorBody = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed (${res.status})`);
-  }
-
-  return res.status === 204 ? (null as T) : ((await res.json()) as T);
-}
-
-function toArray<T>(data: unknown): T[] {
-  if (Array.isArray(data)) return data as T[];
-  if (data && typeof data === "object") {
-    const obj = data as Record<string, unknown>;
-    if (Array.isArray(obj.$values)) return obj.$values as T[];
-    if (Array.isArray(obj.items)) return obj.items as T[];
-  }
-  return [];
-}
-
-const STATUS_STYLES: Record<LeaveStatus, string> = {
-  Pending:
-    "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-800/50",
-  Approved:
-    "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-800/50",
-  Reject:
-    "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-800/50",
-  Cancel:
-    "bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 ring-slate-500/20 dark:ring-zinc-700/50",
-};
-
-const LEAVE_TYPES: LeaveType[] = ["Sick", "Maternity", "Emergency", "Personal"];
-
-function StatusBadge({ status }: { status: LeaveStatus }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[status]}`}
-    >
-      {status}
-    </span>
-  );
-}
-
-interface UserSelectComboboxProps {
-  users: EmployeeOption[];
-  value: string;
-  onChange: (userId: string) => void;
-  placeholder?: string;
-}
-
-function UserSelectCombobox({
-  users,
-  value,
-  onChange,
-  placeholder = "Select employee...",
-}: UserSelectComboboxProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const selectedUser = users.find((u) => String(u.id) === value);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredUsers = users.filter((u) =>
-    u.userName.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex min-h-[38px] w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-zinc-500"
-      >
-        <span
-          className={
-            selectedUser
-              ? "text-slate-800 dark:text-zinc-200"
-              : "text-slate-400 dark:text-zinc-500"
-          }
-        >
-          {selectedUser ? selectedUser.userName : placeholder}
-        </span>
-        <ChevronDown
-          size={16}
-          className={`text-slate-400 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
-          <div className="sticky top-0 border-b border-slate-100 bg-white p-2 dark:border-zinc-700/50 dark:bg-zinc-800">
-            <div className="relative">
-              <Search
-                size={14}
-                className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400 dark:text-zinc-500"
-              />
-              <input
-                type="text"
-                autoFocus
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search user..."
-                className="w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-2.5 text-xs text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:focus:border-zinc-500"
-              />
-            </div>
-          </div>
-
-          {filteredUsers.length === 0 ? (
-            <div className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-zinc-500">
-              No matching employee found
-            </div>
-          ) : (
-            filteredUsers.map((u) => {
-              const isSelected = String(u.id) === value;
-              return (
-                <div
-                  key={u.id}
-                  onClick={() => {
-                    onChange(String(u.id));
-                    setIsOpen(false);
-                    setSearchTerm("");
-                  }}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-zinc-700/50 ${
-                    isSelected
-                      ? "bg-slate-50 font-medium text-slate-900 dark:bg-zinc-700/50 dark:text-zinc-100"
-                      : "text-slate-700 dark:text-zinc-300"
-                  }`}
-                >
-                  <span>{u.userName}</span>
-                  {isSelected && (
-                    <Check
-                      size={14}
-                      className="text-slate-900 dark:text-zinc-100"
-                    />
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+const PAGE_SIZE = 8;
 
 export default function LeaveRequestsPage() {
-  const [requests, setRequests] = useState<LeaveRequestDto[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const { hasPermission } = useAuth();
   const [pageNumber, setPageNumber] = useState(1);
-  const pageSize = 8;
-
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const debouncedSearch = useDebouncedValue(search);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-
   const [rejectingRequest, setRejectingRequest] =
     useState<LeaveRequestDto | null>(null);
   const [deletingRequest, setDeletingRequest] =
     useState<LeaveRequestDto | null>(null);
 
-  const loadRequests = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({
-        pageNumber: String(pageNumber),
-        pageSize: String(pageSize),
-        status: "Pending",
-      });
+  const {
+    data,
+    loading,
+    error: loadError,
+    reload,
+  } = useAsync(
+    useCallback(
+      () =>
+        fetchLeaveRequests({
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          status: "Pending",
+          search: debouncedSearch,
+        }),
+      [pageNumber, debouncedSearch],
+    ),
+    "Failed to load leave requests.",
+  );
 
-      if (search) params.set("search", search);
+  const requests = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const error = actionError ?? loadError;
 
-      const data = await apiFetch<PagedResult<LeaveRequestDto>>(
-        `/leave-requests?${params.toString()}`,
-      );
-      setRequests(data.items);
-      setTotalCount(data.totalCount);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load leave requests.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [pageNumber, search]);
-
-  useEffect(() => {
-    loadRequests();
-  }, [loadRequests]);
-
-  async function handleApprove(id: number) {
+  // Runs an approve/reject/delete action, then refreshes the list.
+  async function runAction(
+    id: number,
+    action: () => Promise<unknown>,
+    fallbackError: string,
+  ) {
     setActioningId(id);
+    setActionError(null);
     try {
-      await apiFetch<LeaveRequestDto>(`/leave-requests/${id}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "Approved" }),
-      });
-      await loadRequests();
+      await action();
+      await reload();
+      return true;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update the request.",
-      );
+      setActionError(getErrorMessage(err, fallbackError));
+      return false;
     } finally {
       setActioningId(null);
     }
   }
 
-  async function handleConfirmReject(id: number, remark: string) {
-    setActioningId(id);
-    try {
-      await apiFetch<LeaveRequestDto>(`/leave-requests/${id}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "Reject", note: remark }),
-      });
-      setRejectingRequest(null);
-      await loadRequests();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to reject the request.",
-      );
-    } finally {
-      setActioningId(null);
-    }
-  }
+  const handleApprove = (id: number) =>
+    runAction(
+      id,
+      () => updateLeaveRequestStatus(id, { status: "Approved" }),
+      "Failed to update the request.",
+    );
 
-  async function handleConfirmDelete(id: number) {
-    setActioningId(id);
-    try {
-      await apiFetch(`/leave-requests/${id}`, { method: "DELETE" });
-      setDeletingRequest(null);
-      await loadRequests();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete the leave request.",
-      );
-    } finally {
-      setActioningId(null);
-    }
-  }
+  const handleConfirmReject = async (id: number, note: string) => {
+    const ok = await runAction(
+      id,
+      () => updateLeaveRequestStatus(id, { status: "Reject", note }),
+      "Failed to reject the request.",
+    );
+    if (ok) setRejectingRequest(null);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const handleConfirmDelete = async (id: number) => {
+    const ok = await runAction(
+      id,
+      () => deleteLeaveRequest(id),
+      "Failed to delete the leave request.",
+    );
+    if (ok) setDeletingRequest(null);
+  };
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -317,12 +121,14 @@ export default function LeaveRequestsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-zinc-700 dark:hover:bg-zinc-600"
-        >
-          <Plus size={16} /> New leave request
-        </button>
+        {hasPermission(Permission.CreateLeave) && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-zinc-700 dark:hover:bg-zinc-600"
+          >
+            <Plus size={16} /> New leave request
+          </button>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -401,7 +207,7 @@ export default function LeaveRequestsPage() {
                 >
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-zinc-200">
                     <Link
-                      to={`/leaves/detail/${r.id}`}
+                      to={paths.leaveDetail(r.id)}
                       className="hover:underline text-slate-900 dark:text-zinc-100"
                     >
                       {r.userName}
@@ -417,35 +223,41 @@ export default function LeaveRequestsPage() {
                     {r.totalDays}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={r.status} />
+                    <LeaveStatusBadge status={r.status} />
                   </td>
                   <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-zinc-400">
                     {r.remark || "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <button
-                        disabled={actioningId === r.id}
-                        onClick={() => handleApprove(r.id)}
-                        className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/70"
-                      >
-                        <Check size={14} /> Approve
-                      </button>
-                      <button
-                        disabled={actioningId === r.id}
-                        onClick={() => setRejectingRequest(r)}
-                        className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/70"
-                      >
-                        <X size={14} /> Reject
-                      </button>
-                      <button
-                        disabled={actioningId === r.id}
-                        onClick={() => setDeletingRequest(r)}
-                        title="Delete leave request"
-                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-zinc-700 dark:text-rose-400 dark:hover:bg-rose-950/40"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {hasPermission(Permission.UpdateLeave) && (
+                        <>
+                          <button
+                            disabled={actioningId === r.id}
+                            onClick={() => handleApprove(r.id)}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/70"
+                          >
+                            <Check size={14} /> Approve
+                          </button>
+                          <button
+                            disabled={actioningId === r.id}
+                            onClick={() => setRejectingRequest(r)}
+                            className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/70"
+                          >
+                            <X size={14} /> Reject
+                          </button>
+                        </>
+                      )}
+                      {hasPermission(Permission.DeleteLeave) && (
+                        <button
+                          disabled={actioningId === r.id}
+                          onClick={() => setDeletingRequest(r)}
+                          title="Delete leave request"
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-zinc-700 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -468,7 +280,7 @@ export default function LeaveRequestsPage() {
             Prev
           </button>
           <button
-            disabled={pageNumber >= totalPages || totalPages === 0}
+            disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => p + 1)}
             className="rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
@@ -478,378 +290,44 @@ export default function LeaveRequestsPage() {
       </div>
 
       {showCreateModal && (
-        <CreateLeaveRequestModal
+        <LeaveFormModal
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
+          onSaved={() => {
             setShowCreateModal(false);
-            setPageNumber(1);
-            loadRequests();
+            if (pageNumber === 1) reload();
+            else setPageNumber(1);
           }}
         />
       )}
 
       {rejectingRequest && (
-        <RejectReasonModal
+        <RejectLeaveModal
           request={rejectingRequest}
           onClose={() => setRejectingRequest(null)}
-          onConfirm={(remark) =>
-            handleConfirmReject(rejectingRequest.id, remark)
-          }
+          onConfirm={(note) => handleConfirmReject(rejectingRequest.id, note)}
           submitting={actioningId === rejectingRequest.id}
         />
       )}
 
       {deletingRequest && (
-        <DeleteConfirmationModal
-          request={deletingRequest}
-          onClose={() => setDeletingRequest(null)}
-          onConfirm={(id) => handleConfirmDelete(id)}
-          submitting={actioningId === deletingRequest.id}
+        <ConfirmDialog
+          title="Delete leave request"
+          message={
+            <>
+              Are you sure you want to delete the leave request for{" "}
+              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+                {deletingRequest.userName}
+              </span>{" "}
+              ({deletingRequest.startDate} → {deletingRequest.endDate})? This
+              action cannot be undone.
+            </>
+          }
+          confirmLabel="Delete request"
+          busy={actioningId === deletingRequest.id}
+          onConfirm={() => handleConfirmDelete(deletingRequest.id)}
+          onCancel={() => setDeletingRequest(null)}
         />
       )}
-    </div>
-  );
-}
-
-interface DeleteConfirmationModalProps {
-  request: LeaveRequestDto;
-  onClose: () => void;
-  onConfirm: (id: number) => void;
-  submitting: boolean;
-}
-
-function DeleteConfirmationModal({
-  request,
-  onClose,
-  onConfirm,
-  submitting,
-}: DeleteConfirmationModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
-      <div className="w-full max-w-md rounded-xl border border-transparent bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
-            <Trash2 size={20} />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
-              Delete leave request
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-zinc-400">
-              This action cannot be undone.
-            </p>
-          </div>
-        </div>
-
-        <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-zinc-300">
-          Are you sure you want to delete the leave request for{" "}
-          <span className="font-semibold text-slate-900 dark:text-zinc-100">
-            {request.userName}
-          </span>{" "}
-          ({request.startDate} → {request.endDate})?
-        </p>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onConfirm(request.id)}
-            disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-          >
-            {submitting ? (
-              <>
-                <Loader2 size={15} className="animate-spin" /> Deleting...
-              </>
-            ) : (
-              "Delete request"
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface RejectReasonModalProps {
-  request: LeaveRequestDto;
-  onClose: () => void;
-  onConfirm: (remark: string) => void;
-  submitting: boolean;
-}
-
-function RejectReasonModal({
-  request,
-  onClose,
-  onConfirm,
-  submitting,
-}: RejectReasonModalProps) {
-  const [remark, setRemark] = useState(request.remark || "");
-
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    onConfirm(remark);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
-      <div className="w-full max-w-md rounded-xl border border-transparent bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
-          Reject leave request
-        </h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
-          Rejecting request for{" "}
-          <span className="font-medium text-slate-700 dark:text-zinc-200">
-            {request.userName}
-          </span>{" "}
-          ({request.leaveType}).
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-              Rejection note / reason
-            </label>
-            <textarea
-              value={remark}
-              onChange={(e) => setRemark(e.target.value)}
-              rows={3}
-              required
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
-              placeholder="State the reason for rejecting this leave request..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || !remark.trim()}
-              className="rounded-lg bg-rose-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
-            >
-              {submitting ? "Rejecting..." : "Confirm Rejection"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-interface CreateFormState {
-  userId: string;
-  leaveType: LeaveType;
-  startDate: string;
-  endDate: string;
-  remark: string;
-  initialStatus: Extract<LeaveStatus, "Pending" | "Approved">;
-}
-
-interface CreateLeaveRequestModalProps {
-  onClose: () => void;
-  onCreated: () => void;
-}
-
-function CreateLeaveRequestModal({
-  onClose,
-  onCreated,
-}: CreateLeaveRequestModalProps) {
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [form, setForm] = useState<CreateFormState>({
-    userId: "",
-    leaveType: "Sick",
-    startDate: "",
-    endDate: "",
-    remark: "",
-    initialStatus: "Pending",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiFetch<unknown>("/user/select-options")
-      .then((data) => setEmployees(toArray<EmployeeOption>(data)))
-      .catch((err) =>
-        setError(
-          err instanceof Error ? err.message : "Failed to load employees.",
-        ),
-      );
-  }, []);
-
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-
-    if (!form.userId || !form.startDate || !form.endDate) {
-      setError("Please fill in employee, start date, and end date.");
-      return;
-    }
-    if (form.endDate < form.startDate) {
-      setError("End date cannot be before start date.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload: CreateLeaveRequestDto = {
-        userId: Number(form.userId),
-        leaveType: form.leaveType,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        remark: form.remark || undefined,
-        initialStatus: form.initialStatus,
-      };
-      await apiFetch<LeaveRequestDto>("/leave-requests", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      onCreated();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create the request.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
-      <div className="w-full max-w-md rounded-xl border border-transparent bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-zinc-100">
-          Create leave request
-        </h2>
-
-        {error && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-            <AlertCircle size={16} /> {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-              Employee
-            </label>
-            <UserSelectCombobox
-              users={employees}
-              value={form.userId}
-              onChange={(userId) => setForm({ ...form, userId })}
-              placeholder="Search and select employee..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-                Leave type
-              </label>
-              <select
-                value={form.leaveType}
-                onChange={(e) =>
-                  setForm({ ...form, leaveType: e.target.value as LeaveType })
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-zinc-500"
-              >
-                {LEAVE_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-                Set status to
-              </label>
-              <select
-                value={form.initialStatus}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    initialStatus: e.target
-                      .value as CreateFormState["initialStatus"],
-                  })
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-zinc-500"
-              >
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved (skip review)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-                Start date
-              </label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) =>
-                  setForm({ ...form, startDate: e.target.value })
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-zinc-500"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-                End date
-              </label>
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-zinc-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400">
-              Remark (optional)
-            </label>
-            <textarea
-              value={form.remark}
-              onChange={(e) => setForm({ ...form, remark: e.target.value })}
-              rows={2}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
-              placeholder="Reason or context for this leave..."
-            />
-          </div>
-
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-zinc-700 dark:hover:bg-zinc-600 disabled:opacity-50"
-            >
-              {submitting ? "Creating..." : "Create request"}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

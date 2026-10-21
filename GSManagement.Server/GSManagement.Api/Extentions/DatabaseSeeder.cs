@@ -1,4 +1,4 @@
-﻿using GSManagement.Domain.DB;
+using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -17,20 +17,40 @@ public static class DatabaseSeeder
             await context.Database.MigrateAsync();
         }
 
-        // 1. Seed Permissions with Modules
-        if (!await context.Permissions.AnyAsync())
-        {
-            var permissionsToSeed = Enum.GetValues<AppPermission>()
-                .Select(permission => new Permission
-                {
-                    PermissionName = permission,
-                    Module = GetModuleFromPermission(permission),
-                    Description = GetDescription(permission),
-                    CreatedAt = DateTime.Now
-                });
+        // 1. Seed Permissions with Modules (seeds missing permissions dynamically)
+        var existingPermissions = await context.Permissions
+            .Select(p => p.PermissionName)
+            .ToListAsync();
 
-            await context.Permissions.AddRangeAsync(permissionsToSeed);
+        var missingPermissions = Enum.GetValues<AppPermission>()
+            .Except(existingPermissions)
+            .Select(permission => new Permission
+            {
+                PermissionName = permission,
+                Module = GetModuleFromPermission(permission),
+                Description = GetDescription(permission),
+                CreatedAt = DateTime.Now
+            })
+            .ToList();
+
+        if (missingPermissions.Count > 0)
+        {
+            await context.Permissions.AddRangeAsync(missingPermissions);
             await context.SaveChangesAsync();
+
+            // Grant newly created permissions to Admin role if Admin already exists
+            var adminRole = await context.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.RoleName == "Admin");
+
+            if (adminRole != null)
+            {
+                foreach (var permission in missingPermissions)
+                {
+                    adminRole.Permissions.Add(permission);
+                }
+                await context.SaveChangesAsync();
+            }
         }
 
         // 2. Seed Roles
@@ -50,6 +70,32 @@ public static class DatabaseSeeder
                 new Role { RoleName = "Accountant", CreatedAt = DateTime.Now }
             );
             await context.SaveChangesAsync();
+        }
+
+        // 2b. HR runs the HR side of the app (staff, attendance, leave, shifts).
+        // Granted idempotently so existing databases pick it up too. Other
+        // roles get no permissions: they only use the self-service
+        // /api/employee/* endpoints, which need just a login.
+        var hr = await context.Roles
+            .Include(r => r.Permissions)
+            .FirstOrDefaultAsync(r => r.RoleName == "HR");
+
+        if (hr != null)
+        {
+            PermissionModule[] hrModules =
+                [PermissionModule.User, PermissionModule.Attendance, PermissionModule.Leave, PermissionModule.Shift];
+
+            var hrMissing = await context.Permissions
+                .Where(p => hrModules.Contains(p.Module))
+                .ToListAsync();
+            hrMissing = hrMissing.Where(p => hr.Permissions.All(x => x.Id != p.Id)).ToList();
+
+            if (hrMissing.Count > 0)
+            {
+                foreach (var permission in hrMissing)
+                    hr.Permissions.Add(permission);
+                await context.SaveChangesAsync();
+            }
         }
 
         // 3. Seed Users
@@ -153,6 +199,20 @@ public static class DatabaseSeeder
             );
             await context.SaveChangesAsync();
         }
+
+        // 5. Seed Default Shift (8:00 - 17:00 with 15 mins grace period)
+        if (!await context.Shifts.AnyAsync())
+        {
+            await context.Shifts.AddAsync(new Shift
+            {
+                Name = "Regular Shift",
+                StartTime = new TimeOnly(8, 0),
+                EndTime = new TimeOnly(17, 0),
+                GraceMinutes = 15,
+                IsDefault = true
+            });
+            await context.SaveChangesAsync();
+        }
     }
 
     private static PermissionModule GetModuleFromPermission(AppPermission permission)
@@ -171,8 +231,15 @@ public static class DatabaseSeeder
             AppPermission.ViewAttendance or AppPermission.CreateAttendance or AppPermission.UpdateAttendance or AppPermission.DeleteAttendance
                 => PermissionModule.Attendance,
 
+            // Add this new block:
+            AppPermission.ViewLeave or AppPermission.CreateLeave or AppPermission.UpdateLeave or AppPermission.DeleteLeave
+                => PermissionModule.Leave,
+
             AppPermission.ViewClient or AppPermission.CreateClient or AppPermission.UpdateClient or AppPermission.DeleteClient
                 => PermissionModule.Client,
+
+            AppPermission.ViewShift or AppPermission.CreateShift or AppPermission.UpdateShift or AppPermission.DeleteShift
+                => PermissionModule.Shift,
 
             _ => throw new ArgumentOutOfRangeException(nameof(permission), permission, "Unhandled permission enum value")
         };
@@ -215,6 +282,15 @@ public static class DatabaseSeeder
         AppPermission.DeleteAttendance
             => "Can " + nameof(AppPermission.DeleteAttendance),
 
+        AppPermission.ViewLeave
+        => "Can " + nameof(AppPermission.ViewLeave),
+        AppPermission.CreateLeave
+            => "Can " + nameof(AppPermission.CreateLeave),
+        AppPermission.UpdateLeave
+            => "Can " + nameof(AppPermission.UpdateLeave),
+        AppPermission.DeleteLeave
+            => "Can " + nameof(AppPermission.DeleteLeave),
+
         AppPermission.ViewClient
             => "Can " + nameof(AppPermission.ViewClient),
         AppPermission.CreateClient
@@ -223,6 +299,15 @@ public static class DatabaseSeeder
             => "Can " + nameof(AppPermission.UpdateClient),
         AppPermission.DeleteClient
             => "Can " + nameof(AppPermission.DeleteClient),
+
+        AppPermission.ViewShift
+            => "Can " + nameof(AppPermission.ViewShift),
+        AppPermission.CreateShift
+            => "Can " + nameof(AppPermission.CreateShift),
+        AppPermission.UpdateShift
+            => "Can " + nameof(AppPermission.UpdateShift),
+        AppPermission.DeleteShift
+            => "Can " + nameof(AppPermission.DeleteShift),
 
         _ => throw new ArgumentOutOfRangeException(nameof(permission), permission, "Unhandled permission enum value")
     };

@@ -1,3 +1,5 @@
+using GSManagement.Domain.Entities.Enums;
+using JwtTest.Middlewares.CheckPermission;
 using GSManagement.Api.Features.RoleFeature.DTOs;
 using GSManagement.Api.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +11,7 @@ namespace GSManagement.Api.Features.RoleFeature;
 public class RoleController(IRoleService roleService) : ControllerBase
 {
     [HttpGet]
+    [HasPermission(AppPermission.ViewRole)]
     public async Task<ActionResult<PagedResult<RoleResponse>>> GetAlRoles(
         [FromQuery] int pageNumber,
         [FromQuery] int pageSize,
@@ -25,6 +28,7 @@ public class RoleController(IRoleService roleService) : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [HasPermission(AppPermission.ViewRole)]
     public async Task<ActionResult<RoleResponse>> GetRoleById(int id, CancellationToken ct)
     {
         var result = await roleService.GetRoleByIdAsync(id, ct);
@@ -33,6 +37,7 @@ public class RoleController(IRoleService roleService) : ControllerBase
     }
 
     [HttpPost]
+    [HasPermission(AppPermission.CreateRole)]
     public async Task<ActionResult<RoleResponse>> CreateRole([FromBody] CreateRoleRequest request, CancellationToken ct)
     {
         if (request is null)
@@ -53,6 +58,7 @@ public class RoleController(IRoleService roleService) : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [HasPermission(AppPermission.UpdateRole)]
     public async Task<ActionResult<RoleResponse>> UpdateRole([FromBody] UpdateRoleRequest request, int id, CancellationToken ct)
     {
         if (request == null)
@@ -74,6 +80,7 @@ public class RoleController(IRoleService roleService) : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [HasPermission(AppPermission.DeleteRole)]
     public async Task<ActionResult<RoleResponse>> DeleteRole(int id, CancellationToken ct)
     {
         var result = await roleService.DeleteRoleAsync(id, ct);

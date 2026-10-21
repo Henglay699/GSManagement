@@ -17,7 +17,7 @@ namespace GSManagement.Domain.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -39,11 +39,26 @@ namespace GSManagement.Domain.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<string>("HalfDayPeriod")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsHalfDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int?>("LeaveRequestId")
                         .HasColumnType("int");
 
+                    b.Property<double?>("OvertimeMinutes")
+                        .HasColumnType("float");
+
                     b.Property<string>("Remark")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -56,6 +71,8 @@ namespace GSManagement.Domain.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("LeaveRequestId");
+
+                    b.HasIndex("ShiftId");
 
                     b.HasIndex("UserId");
 
@@ -141,6 +158,15 @@ namespace GSManagement.Domain.Migrations
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("HalfDayPeriod")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsHalfDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LeaveType")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -168,6 +194,32 @@ namespace GSManagement.Domain.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("LeaveRequests");
+                });
+
+            modelBuilder.Entity("GSManagement.Domain.Entities.OvertimeRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttendanceId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("OvertimeMinutes")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttendanceId")
+                        .IsUnique();
+
+                    b.ToTable("OvertimeRecords");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.Permission", b =>
@@ -220,6 +272,12 @@ namespace GSManagement.Domain.Migrations
                     b.Property<bool>("IsInVoked")
                         .HasColumnType("bit");
 
+                    b.Property<string>("PreviousToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("SessionExpireDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -234,7 +292,7 @@ namespace GSManagement.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshToken");
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.Role", b =>
@@ -263,6 +321,45 @@ namespace GSManagement.Domain.Migrations
                         .IsUnique();
 
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("GSManagement.Domain.Entities.Shift", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("GraceMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(15);
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Shifts_SingleDefault")
+                        .HasFilter("[IsDefault] = 1");
+
+                    b.ToTable("Shifts");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.User", b =>
@@ -298,7 +395,7 @@ namespace GSManagement.Domain.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("User");
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.Attendance", b =>
@@ -307,6 +404,11 @@ namespace GSManagement.Domain.Migrations
                         .WithMany()
                         .HasForeignKey("LeaveRequestId");
 
+                    b.HasOne("GSManagement.Domain.Entities.Shift", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("GSManagement.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -314,6 +416,8 @@ namespace GSManagement.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("LeaveRequest");
+
+                    b.Navigation("Shift");
 
                     b.Navigation("User");
                 });
@@ -374,6 +478,17 @@ namespace GSManagement.Domain.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("GSManagement.Domain.Entities.OvertimeRecord", b =>
+                {
+                    b.HasOne("GSManagement.Domain.Entities.Attendance", "Attendance")
+                        .WithOne("OvertimeRecord")
+                        .HasForeignKey("GSManagement.Domain.Entities.OvertimeRecord", "AttendanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attendance");
+                });
+
             modelBuilder.Entity("GSManagement.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("GSManagement.Domain.Entities.User", "User")
@@ -383,6 +498,11 @@ namespace GSManagement.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GSManagement.Domain.Entities.Attendance", b =>
+                {
+                    b.Navigation("OvertimeRecord");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.User", b =>

@@ -13,8 +13,8 @@ public class WeekDayInfoDto
     public string DayName { get; set; } = string.Empty;
     public int DayNumber { get; set; }
     public DateOnly Date { get; set; }
-    public bool IsHoliday {get; set;}
-    public string? HolidayName {get; set;}
+    public bool IsHoliday { get; set; }
+    public string? HolidayName { get; set; }
 }
 
 public class EmployeeAttendanceDto
@@ -34,10 +34,14 @@ public class AttendanceRecordDto
     public TimeOnly? CheckInTime { get; set; }
     public TimeOnly? CheckOutTime { get; set; }
     public string? TotalHour { get; set; }
+    public double? OvertimeMinutes { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
+    public int? ShiftId { get; set; }
+    public string? ShiftName { get; set; }
     public AttendanceStatus Status { get; set; }
     public string? Remark { get; set; }
 }
-
 
 public class CreateAttendanceDto
 {
@@ -48,4 +52,8 @@ public class CreateAttendanceDto
     public AttendanceStatus Status { get; set; }
     public string? Remark { get; set; }
     public int? LeaveRequestId { get; set; }
+    public int? ShiftId { get; set; }
+    public double? OvertimeMinutes { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
 }

@@ -20,6 +20,8 @@ public class LeaveRequestDto
     public string? Remark { get; set; }
     public DateOnly CreatedAt { get; set; }
     public DateTime? ActionedAt { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
 }
 
 /// <summary>
@@ -32,8 +34,23 @@ public class CreateLeaveRequestDto
     public required DateOnly StartDate { get; set; }
     public required DateOnly EndDate { get; set; }
     public string? Remark { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
 
     public LeaveStatus InitialStatus { get; set; } = LeaveStatus.Pending;
+}
+
+/// <summary>
+/// Used by an employee to request leave for themselves (POST /api/employee/leaves).
+/// </summary>
+public class CreateMyLeaveRequestDto
+{
+    public required LeaveType LeaveType { get; set; }
+    public required DateOnly StartDate { get; set; }
+    public required DateOnly EndDate { get; set; }
+    public string? Remark { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
 }
 
 /// <summary>
@@ -58,6 +75,8 @@ public class UpdateLeaveRequestDto
     public required DateOnly EndDate { get; set; }
     public required LeaveStatus Status { get; set; }
     public string? Remark { get; set; }
+    public bool IsHalfDay { get; set; }
+    public HalfDayPeriod? HalfDayPeriod { get; set; }
 }
 
 /// <summary>

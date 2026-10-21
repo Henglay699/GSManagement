@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
-import { User } from "../../models/user";
+import type { User } from "../../types/user";
+import { paths } from "../../lib/paths";
+import { getInitials } from "../../utils/string";
 import { Mail, Shield, Edit, Trash2, Calendar } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
+import ZoomablePhoto from "../ui/ZoomablePhoto";
 
 interface UserTableProps {
   users: User[];
@@ -8,15 +13,7 @@ interface UserTableProps {
 }
 
 function UserTable({ users, onDelete }: UserTableProps) {
-  // Helper to extract 2-letter initials (e.g. "Iqbal Bahroin" -> "IB")
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
+  const { hasPermission } = useAuth();
 
   return (
     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg-slate-100/50 dark:bg-zinc-900">
@@ -37,32 +34,38 @@ function UserTable({ users, onDelete }: UserTableProps) {
                     : "text-red-400 dark:text-rose-400"
                 }`}
               >
-                {isActive ? "Active" : "In Active"}
+                {isActive ? "Active" : "Inactive"}
               </span>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-1">
-                <Link
-                  to={`/user/update/${user.id}`}
-                  className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
-                  title="Edit user"
-                >
-                  <Edit size={14} />
-                </Link>
-                <Link
-                  to={`/admin/attendance/user/${user.id}`}
-                  className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
-                  title="View attendance"
-                >
-                  <Calendar size={14} />
-                </Link>
-                <button
-                  onClick={() => onDelete(user)}
-                  className="p-1 text-slate-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
-                  title="Delete user"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {hasPermission(Permission.UpdateUser) && (
+                  <Link
+                    to={paths.userEdit(user.id)}
+                    className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
+                    title="Edit user"
+                  >
+                    <Edit size={14} />
+                  </Link>
+                )}
+                {hasPermission(Permission.ViewAttendance) && (
+                  <Link
+                    to={paths.userAttendance(user.id)}
+                    className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
+                    title="View attendance"
+                  >
+                    <Calendar size={14} />
+                  </Link>
+                )}
+                {hasPermission(Permission.DeleteUser) && (
+                  <button
+                    onClick={() => onDelete(user)}
+                    className="p-1 text-slate-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
+                    title="Delete user"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -70,8 +73,8 @@ function UserTable({ users, onDelete }: UserTableProps) {
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-1 pr-2">
                 <Link
-                  to={`/user/detail/${user.id}`}
-                  className="text-sm font-bold text-indigo-900 dark:text-indigo-300 text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 line-clamp-1 transition-colors"
+                  to={paths.userDetail(user.id)}
+                  className="text-sm font-bold text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 line-clamp-1 transition-colors"
                 >
                   {user.userName}
                 </Link>
@@ -90,8 +93,12 @@ function UserTable({ users, onDelete }: UserTableProps) {
 
               {/* Avatar with Initials & Status Dot */}
               <div className="relative shrink-0">
-                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-zinc-200 font-bold flex items-center justify-center text-xs tracking-wider shadow-inner">
-                  {getInitials(user.userName)}
+                <div className="w-13 h-13 rounded-full bg-slate-100 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-zinc-200 font-bold flex items-center justify-center text-xs tracking-wider shadow-inner">
+                  {user.imageUrl ? (
+                    <ZoomablePhoto src={user.imageUrl} alt={user.userName} />
+                  ) : (
+                    getInitials(user.userName)
+                  )}
                 </div>
                 <span
                   className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-800 ${

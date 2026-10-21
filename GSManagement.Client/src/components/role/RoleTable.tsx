@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import Role from "../../models/role";
+import type { Role } from "../../types/role";
+import { paths } from "../../lib/paths";
 import {
   Shield,
   KeyRound,
@@ -8,7 +9,9 @@ import {
   Calendar,
   FileText,
 } from "lucide-react";
-import { formatDate } from "../../utils/datetimeformater";
+import { formatDate } from "../../utils/dateTimeFormatter";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
 
 interface RoleTableProps {
   roles: Role[];
@@ -16,6 +19,8 @@ interface RoleTableProps {
 }
 
 function RoleTable({ roles, onDelete }: RoleTableProps) {
+  const { hasPermission } = useAuth();
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-xs text-slate-600 dark:text-zinc-400">
@@ -52,8 +57,8 @@ function RoleTable({ roles, onDelete }: RoleTableProps) {
                   </div>
                   <div>
                     <Link
-                      to={`/role/detail/${role.id}`}
-                      className="font-semibold text-slate-800 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition-colors !no-underline"
+                      to={paths.roleDetail(role.id)}
+                      className="font-semibold text-slate-800 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition-colors"
                     >
                       {role.roleName}
                     </Link>
@@ -103,20 +108,24 @@ function RoleTable({ roles, onDelete }: RoleTableProps) {
               {/* Action Buttons */}
               <td className="px-5 py-3.5 whitespace-nowrap text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <Link
-                    to={`/role/update/${role.id}`}
-                    className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-                    title="Edit Role"
-                  >
-                    <Edit size={14} />
-                  </Link>
-                  <button
-                    onClick={() => onDelete(role)}
-                    className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-                    title="Delete Role"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {hasPermission(Permission.UpdateRole) && (
+                    <Link
+                      to={paths.roleEdit(role.id)}
+                      className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                      title="Edit Role"
+                    >
+                      <Edit size={14} />
+                    </Link>
+                  )}
+                  {hasPermission(Permission.DeleteRole) && (
+                    <button
+                      onClick={() => onDelete(role)}
+                      className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                      title="Delete Role"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -10,58 +10,47 @@ import {
   Edit,
   Trash2,
   Loader2,
-  AlertTriangle,
   LockKeyhole,
 } from "lucide-react";
-import axios from "axios";
-import Role from "../../models/role";
-import Permission from "../../models/permission";
-import { formatDate } from "../../utils/datetimeformater";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { useAsync } from "../../hooks/useAsync";
+import { getErrorMessage } from "../../lib/api";
+import { paths } from "../../lib/paths";
+import { deleteRole, fetchRoleById } from "../../services/roleService";
+import type { Permission } from "../../types/permission";
+import { formatDate } from "../../utils/dateTimeFormatter";
+import { useAuth } from "../../context/AuthContext";
+// Aliased: `Permission` here is already the permission row type.
+import { Permission as AppPermission } from "../../lib/permissions";
 
 function RoleDetailPage() {
+  const { hasPermission } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [role, setRole] = useState<Role | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const roleId = Number(id);
 
-  // Delete Modal state
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const loadRoleDetail = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get<Role>(`/api/role/${id}`);
-        setRole(response.data);
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          setErrorMessage(
-            error.response?.data?.message || "Failed to load role details.",
-          );
-        } else {
-          setErrorMessage("An unexpected error occurred.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      loadRoleDetail();
-    }
-  }, [id]);
+  const {
+    data: role,
+    loading,
+    error: errorMessage,
+    setError,
+  } = useAsync(
+    useCallback(() => fetchRoleById(roleId), [roleId]),
+    "Failed to load role details.",
+  );
 
   const handleDelete = async () => {
-    if (!id) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`/api/role/${id}`);
-      navigate("/roles");
+      await deleteRole(roleId);
+      navigate(paths.roles);
     } catch (error) {
-      console.error("Failed to delete role:", error);
+      setShowDeleteModal(false);
+      setError(getErrorMessage(error, "Failed to delete role."));
     } finally {
       setIsDeleting(false);
     }
@@ -82,7 +71,7 @@ function RoleDetailPage() {
       <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
-            to="/roles"
+            to={paths.roles}
             className="p-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
             title="Back to Roles"
           >
@@ -106,20 +95,25 @@ function RoleDetailPage() {
         {/* Action Controls */}
         {role && (
           <div className="flex items-center gap-2">
-            <Link to={`/role/update/${role.id}`}>
-              <button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 font-semibold text-xs rounded-xl transition-all">
+            {hasPermission(AppPermission.UpdateRole) && (
+              <Link
+                to={paths.roleEdit(role.id)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 font-semibold text-xs rounded-xl transition-all"
+              >
                 <Edit size={14} />
                 <span>Edit Role</span>
-              </button>
-            </Link>
+              </Link>
+            )}
 
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/70 font-semibold text-xs rounded-xl transition-all"
-            >
-              <Trash2 size={14} />
-              <span>Delete</span>
-            </button>
+            {hasPermission(AppPermission.DeleteRole) && (
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/70 font-semibold text-xs rounded-xl transition-all"
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -203,7 +197,10 @@ function RoleDetailPage() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
-                  <KeyRound size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  <KeyRound
+                    size={14}
+                    className="text-indigo-600 dark:text-indigo-400"
+                  />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-100">
@@ -235,7 +232,10 @@ function RoleDetailPage() {
                     >
                       {/* Module Title Header */}
                       <div className="flex items-center gap-2">
-                        <Layers size={13} className="text-indigo-600 dark:text-indigo-400" />
+                        <Layers
+                          size={13}
+                          className="text-indigo-600 dark:text-indigo-400"
+                        />
                         <span className="text-[11px] font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
                           {moduleName}
                         </span>
@@ -270,55 +270,23 @@ function RoleDetailPage() {
         </div>
       ) : null}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteModal && role && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-100 dark:border-zinc-800 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900 rounded-xl shrink-0">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-100">
-                  Delete Role Definition
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
-                  Are you sure you want to remove{" "}
-                  <span className="font-semibold text-slate-800 dark:text-zinc-200">
-                    {role.roleName}
-                  </span>
-                  ? This action cannot be undone.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                disabled={isDeleting}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition-colors disabled:opacity-50 shadow-xs"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Delete Role</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Delete Role Definition"
+          message={
+            <>
+              Are you sure you want to remove{" "}
+              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+                {role.roleName}
+              </span>
+              ? This action cannot be undone.
+            </>
+          }
+          confirmLabel="Delete Role"
+          busy={isDeleting}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       )}
     </div>
   );

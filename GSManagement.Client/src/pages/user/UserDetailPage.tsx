@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { fetchUsersById } from "../../services/userservice";
-import { User } from "../../models/user";
+import { useAsync } from "../../hooks/useAsync";
+import { paths } from "../../lib/paths";
+import { fetchUserById } from "../../services/userService";
+import { getInitials } from "../../utils/string";
 import {
   ArrowLeft,
   Mail,
@@ -13,47 +15,24 @@ import {
   Loader2,
   User as UserIcon,
 } from "lucide-react";
-import axios from "axios";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
+import ZoomablePhoto from "../../components/ui/ZoomablePhoto";
 
 function UserDetailPage() {
+  const { hasPermission } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const userId = Number(id);
 
-  useEffect(() => {
-    if (!id) return;
-
-    const loadUser = async () => {
-      setLoading(true);
-      try {
-        const foundUser = await fetchUsersById(Number(id));
-        setUser(foundUser);
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          setErrorMessage(
-            error.response?.data?.error || "Failed to fetch user details.",
-          );
-        } else {
-          setErrorMessage("An unexpected error occurred.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUser();
-  }, [id]);
-
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
+  const {
+    data: user,
+    loading,
+    error: errorMessage,
+  } = useAsync(
+    useCallback(() => fetchUserById(userId), [userId]),
+    "Failed to fetch user details.",
+  );
 
   if (loading) {
     return (
@@ -71,7 +50,7 @@ function UserDetailPage() {
           {errorMessage || "User not found"}
         </div>
         <button
-          onClick={() => navigate("/users")}
+          onClick={() => navigate(paths.users)}
           className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
         >
           Back to Staff List
@@ -106,21 +85,25 @@ function UserDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {/* Action Button */}
-            <Link
-              to={`/user/update/${user.id}`}
-              className="!no-underline inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-xl transition-colors shadow-md shadow-yellow-100 dark:shadow-none"
-            >
-              <Edit size={16} />
-              <span>Edit Profile</span>
-            </Link>
+            {hasPermission(Permission.UpdateUser) && (
+              <Link
+                to={paths.userEdit(user.id)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-xl transition-colors shadow-md shadow-yellow-100 dark:shadow-none"
+              >
+                <Edit size={16} />
+                <span>Edit Profile</span>
+              </Link>
+            )}
             {/* Action Button */}
-            <Link
-              to={`/admin/attendance/user/${user.id}`}
-              className="!no-underline inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-100 dark:shadow-none"
-            >
-              <Calendar size={16} />
-              <span>View Attendance</span>
-            </Link>
+            {hasPermission(Permission.ViewAttendance) && (
+              <Link
+                to={paths.userAttendance(user.id)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-100 dark:shadow-none"
+              >
+                <Calendar size={16} />
+                <span>View Attendance</span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -129,7 +112,11 @@ function UserDetailPage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-zinc-700 border-2 border-white dark:border-zinc-900 text-slate-700 dark:text-zinc-200 font-bold flex items-center justify-center text-lg tracking-wider shadow-sm">
-                {getInitials(user.userName)}
+                {user.imageUrl ? (
+                  <ZoomablePhoto src={user.imageUrl} alt={user.userName} />
+                ) : (
+                  getInitials(user.userName)
+                )}
               </div>
               <span
                 className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-zinc-900 ${

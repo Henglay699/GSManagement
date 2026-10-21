@@ -16,6 +16,14 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         if (dto.EndDate < dto.StartDate)
             throw new InvalidOperationException("End date cannot be before start date.");
 
+        if (dto.IsHalfDay)
+        {
+            if (dto.StartDate != dto.EndDate)
+                throw new InvalidOperationException("Half-day leave must be for a single date (start and end date must match).");
+            if (!dto.HalfDayPeriod.HasValue)
+                throw new InvalidOperationException("Please select whether the half-day leave is Morning or Afternoon.");
+        }
+
         var employee = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == dto.UserId)
             ?? throw new KeyNotFoundException($"Employee with id {dto.UserId} was not found.");
@@ -31,6 +39,9 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         if (overlaps)
             throw new InvalidOperationException("This employee already has a leave request that overlaps these dates.");
+
+        // Check if employee already has attendance records (clocked in / worked) on these dates
+        await ValidateNoConflictingAttendanceAsync(dto.UserId, dto.StartDate, dto.EndDate, dto.IsHalfDay, dto.HalfDayPeriod);
 
         var holidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.StartDate.Year);
         if (dto.EndDate.Year != dto.StartDate.Year)
@@ -63,6 +74,8 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             Remark = dto.Remark,
             Status = dto.InitialStatus,
             CreatedAt = DateOnly.FromDateTime(DateTime.UtcNow),
+            IsHalfDay = dto.IsHalfDay,
+            HalfDayPeriod = dto.IsHalfDay ? dto.HalfDayPeriod : null,
         };
 
         _context.LeaveRequests.Add(entity);
@@ -101,8 +114,12 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             query = query.Where(lr => lr.StartDate <= filter.ToDate);
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
-            query = query.Where(lr => lr.User != null
-                && lr.User.UserName.ToLower().Contains(filter.Search.ToLower()));
+        {
+            var search = filter.Search.Trim().ToLower();
+            query = query.Where(lr =>
+                lr.User != null && lr.User.UserName.ToLower().Contains(search) ||
+                lr.Remark != null && lr.Remark.ToLower().Contains(search));
+        }
 
         var totalCount = await query.CountAsync();
 
@@ -148,6 +165,12 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         if (dto.Status != LeaveStatus.Approved && dto.Status != LeaveStatus.Reject)
             throw new InvalidOperationException("Status can only be changed to Approved or Reject here.");
 
+        if (dto.Status == LeaveStatus.Approved)
+        {
+            // Verify employee didn't clock in / work during the pending review period
+            await ValidateNoConflictingAttendanceAsync(entity.UserId, entity.StartDate, entity.EndDate, entity.IsHalfDay, entity.HalfDayPeriod, entity.Id);
+        }
+
         entity.Status = dto.Status;
         entity.ApproverId = actionedByUserId;
 
@@ -165,7 +188,27 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         {
             await SyncAttendanceForApprovedLeaveAsync(entity, holidayDates);
         }
+        else if (dto.Status == LeaveStatus.Reject)
+        {
+            await _context.Attendances.Where(a => a.LeaveRequestId == id).ExecuteDeleteAsync();
+        }
 
+        await _context.SaveChangesAsync();
+        return Map(entity);
+    }
+
+    public async Task<LeaveRequestDto> CancelOwnAsync(int id, int userId)
+    {
+        var entity = await _context.LeaveRequests
+            .Include(lr => lr.User)
+            .FirstOrDefaultAsync(lr => lr.Id == id && lr.UserId == userId)
+            ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
+
+        if (entity.Status != LeaveStatus.Pending)
+            throw new InvalidOperationException(
+                $"Only pending requests can be cancelled. This request is already '{entity.Status}'.");
+
+        entity.Status = LeaveStatus.Cancel;
         await _context.SaveChangesAsync();
         return Map(entity);
     }
@@ -174,6 +217,14 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
     {
         if (dto.EndDate < dto.StartDate)
             throw new InvalidOperationException("End date cannot be before start date.");
+
+        if (dto.IsHalfDay)
+        {
+            if (dto.StartDate != dto.EndDate)
+                throw new InvalidOperationException("Half-day leave must be for a single date (start and end date must match).");
+            if (!dto.HalfDayPeriod.HasValue)
+                throw new InvalidOperationException("Please select whether the half-day leave is Morning or Afternoon.");
+        }
 
         var entity = await _context.LeaveRequests
             .Include(lr => lr.User)
@@ -196,6 +247,9 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         if (overlaps)
             throw new InvalidOperationException("This employee already has another leave request that overlaps these dates.");
+
+        // Check if employee already has attendance records (clocked in / worked) on these dates
+        await ValidateNoConflictingAttendanceAsync(dto.UserId, dto.StartDate, dto.EndDate, dto.IsHalfDay, dto.HalfDayPeriod, id);
 
         var holidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.StartDate.Year);
         if (dto.EndDate.Year != dto.StartDate.Year)
@@ -233,6 +287,8 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         entity.Status = dto.Status;
         entity.Remark = dto.Remark;
         entity.ApproverId = actionedByUserId;
+        entity.IsHalfDay = dto.IsHalfDay;
+        entity.HalfDayPeriod = dto.IsHalfDay ? dto.HalfDayPeriod : null;
 
         // 3. Sync attendance again ONLY if the updated status is Approved
         if (entity.Status == LeaveStatus.Approved)
@@ -242,6 +298,58 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         await _context.SaveChangesAsync();
         return Map(entity);
+    }
+
+    private async Task ValidateNoConflictingAttendanceAsync(
+        int userId,
+        DateOnly startDate,
+        DateOnly endDate,
+        bool isHalfDay,
+        HalfDayPeriod? halfDayPeriod,
+        int? currentLeaveRequestId = null)
+    {
+        var existingAttendances = await _context.Attendances
+            .Where(a => a.UserId == userId &&
+                        a.Date >= startDate &&
+                        a.Date <= endDate &&
+                        (currentLeaveRequestId == null || a.LeaveRequestId != currentLeaveRequestId))
+            .ToListAsync();
+
+        if (existingAttendances.Count == 0) return;
+
+        if (!isHalfDay)
+        {
+            // For full-day leave: employee cannot take leave if they already clocked in or worked on that day
+            var attended = existingAttendances
+                .Where(a => a.CheckInTime != null || a.Status == AttendanceStatus.OnTime || a.Status == AttendanceStatus.Late)
+                .Select(a => a.Date.ToString("yyyy-MM-dd"))
+                .ToList();
+
+            if (attended.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot request full-day leave. Attendance records with check-in/presence already exist on: {string.Join(", ", attended)}.");
+            }
+        }
+        else
+        {
+            // For half-day leave: check if the employee already completed a full day
+            var targetDay = existingAttendances.FirstOrDefault(a => a.Date == startDate);
+            if (targetDay != null)
+            {
+                if (targetDay.CheckInTime != null && targetDay.CheckOutTime != null && !targetDay.IsHalfDay)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot request half-day leave on {startDate:yyyy-MM-dd}. A full workday attendance has already been completed for this day.");
+                }
+
+                if (targetDay.IsHalfDay && targetDay.HalfDayPeriod == halfDayPeriod)
+                {
+                    throw new InvalidOperationException(
+                        $"A half-day leave for {halfDayPeriod} already exists on {startDate:yyyy-MM-dd}.");
+                }
+            }
+        }
     }
 
     private async Task SyncAttendanceForApprovedLeaveAsync(LeaveRequest leaveRequest, HashSet<DateOnly> holidayDate)
@@ -261,10 +369,15 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
             if (existingByDate.TryGetValue(date, out var attendance))
             {
-                attendance.Status = AttendanceStatus.Leave;
+                attendance.Status = leaveRequest.IsHalfDay ? AttendanceStatus.HalfDayLeave : AttendanceStatus.Leave;
                 attendance.LeaveRequestId = leaveRequest.Id;
-                attendance.CheckInTime = null;
-                attendance.CheckOutTime = null;
+                attendance.IsHalfDay = leaveRequest.IsHalfDay;
+                attendance.HalfDayPeriod = leaveRequest.HalfDayPeriod;
+                if (!leaveRequest.IsHalfDay)
+                {
+                    attendance.CheckInTime = null;
+                    attendance.CheckOutTime = null;
+                }
             }
             else
             {
@@ -272,8 +385,10 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
                 {
                     UserId = leaveRequest.UserId,
                     Date = date,
-                    Status = AttendanceStatus.Leave,
+                    Status = leaveRequest.IsHalfDay ? AttendanceStatus.HalfDayLeave : AttendanceStatus.Leave,
                     LeaveRequestId = leaveRequest.Id,
+                    IsHalfDay = leaveRequest.IsHalfDay,
+                    HalfDayPeriod = leaveRequest.HalfDayPeriod
                 });
             }
         }
@@ -303,6 +418,8 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         Remark = entity.Remark,
         CreatedAt = entity.CreatedAt,
         ApproverName = entity.Approver != null ? entity.Approver!.UserName : null,
+        IsHalfDay = entity.IsHalfDay,
+        HalfDayPeriod = entity.HalfDayPeriod,
     };
 
     private static int CountWorkingDays(DateOnly start, DateOnly end)

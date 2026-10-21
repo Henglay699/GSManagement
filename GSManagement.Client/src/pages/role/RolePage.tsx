@@ -1,69 +1,64 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import RoleTable from "../../components/role/RoleTable";
-import Role from "../../models/role";
-import { fetchRoles } from "../../services/roleservice";
-import axios from "axios";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { useAsync } from "../../hooks/useAsync";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { getErrorMessage } from "../../lib/api";
+import { paths } from "../../lib/paths";
+import { deleteRole, fetchRoles } from "../../services/roleService";
+import type { Role } from "../../types/role";
 import {
   Search,
   Plus,
   Loader2,
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
+
+const PAGE_SIZE = 10;
 
 function RolePage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const { hasPermission } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebouncedValue(searchTerm);
+  const [pageNumber, setPageNumber] = useState(1);
 
-  // Pagination states
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [pageSize] = useState<number>(10);
-  const [totalCount, setTotalCount] = useState<number>(0);
-
-  // Delete modal states
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const loadRoles = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchRoles(pageNumber, pageSize, searchTerm);
-        setRoles(data.items ?? []);
-        setTotalCount(data.totalCount ?? 0);
-        setErrorMessage(undefined);
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          setErrorMessage("Backend server can't be reached.");
-        } else {
-          setErrorMessage("An unexpected error occurred");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const {
+    data,
+    loading,
+    error: errorMessage,
+    setError,
+    reload,
+  } = useAsync(
+    useCallback(
+      () => fetchRoles(pageNumber, PAGE_SIZE, debouncedSearch),
+      [pageNumber, debouncedSearch],
+    ),
+    "An unexpected error occurred",
+  );
 
-    const timer = setTimeout(loadRoles, 300); // Debounce search requests
-    return () => clearTimeout(timer);
-  }, [pageNumber, pageSize, searchTerm]);
-
-  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+  const roles = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
 
   const handleConfirmDelete = async () => {
     if (!roleToDelete) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`/api/role/${roleToDelete.id}`);
-      setRoles((prev) => prev.filter((r) => r.id !== roleToDelete.id));
+      await deleteRole(roleToDelete.id);
       setRoleToDelete(null);
+      await reload();
     } catch (error) {
-      console.error("Failed to delete role:", error);
+      setRoleToDelete(null);
+      setError(getErrorMessage(error, "Failed to delete role."));
     } finally {
       setIsDeleting(false);
     }
@@ -92,12 +87,15 @@ function RolePage() {
           </div>
         </div>
 
-        <Link to={"/role/create"}>
-          <button className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-xs rounded-xl transition-all shadow-xs hover:shadow-sm">
+        {hasPermission(Permission.CreateRole) && (
+          <Link
+            to={paths.roleCreate}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-xs rounded-xl transition-all shadow-xs hover:shadow-sm"
+          >
             <Plus size={15} />
             <span>Add Role</span>
-          </button>
-        </Link>
+          </Link>
+        )}
       </div>
 
       {/* Main Table Container */}
@@ -132,7 +130,7 @@ function RolePage() {
             <Loader2 className="w-6 h-6 animate-spin text-indigo-600 dark:text-indigo-400 mb-2" />
             <span className="text-xs font-medium">Fetching roles...</span>
           </div>
-        ) : errorMessage != null ? (
+        ) : errorMessage ? (
           <div className="py-12 text-center text-xs font-medium text-rose-500 dark:text-rose-400">
             {errorMessage}
           </div>
@@ -144,7 +142,7 @@ function RolePage() {
           <>
             <RoleTable
               roles={roles}
-              onDelete={(role) => setRoleToDelete(role)}
+              onDelete={setRoleToDelete}
             />
 
             {/* Pagination Footer */}
@@ -180,55 +178,23 @@ function RolePage() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
       {roleToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-100 dark:border-zinc-800 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900 rounded-xl shrink-0">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-100">
-                  Delete Role Definition
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold text-slate-800 dark:text-zinc-200">
-                    {roleToDelete.roleName}
-                  </span>
-                  ? Associated users will lose this role's permission scope.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setRoleToDelete(null)}
-                disabled={isDeleting}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-medium text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition-colors disabled:opacity-50 shadow-xs"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Delete Role</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Delete Role Definition"
+          message={
+            <>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+                {roleToDelete.roleName}
+              </span>
+              ? Associated users will lose this role's permission scope.
+            </>
+          }
+          confirmLabel="Delete Role"
+          busy={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setRoleToDelete(null)}
+        />
       )}
     </div>
   );

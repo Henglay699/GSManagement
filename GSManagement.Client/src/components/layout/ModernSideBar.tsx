@@ -6,7 +6,6 @@ import {
   CalendarOff,
   BarChart2,
   Settings,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -21,15 +20,27 @@ import {
   Plus,
   DollarSign,
   CalendarCheck,
+  Fingerprint,
+  History,
+  Plane,
 } from "lucide-react";
 
-import logo from "../assets/logo.png";
-import { useTheme } from "../hook/ThemeContex";
+import logo from "../../assets/logo.png";
+import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
+import { useLeaveNotifications } from "../../context/LeaveNotificationsContext";
+import ConfirmDialog from "../ui/ConfirmDialog";
+import ProfileMenu from "./ProfileMenu";
+import { paths } from "../../lib/paths";
+import { Permission } from "../../lib/permissions";
 
 interface SubMenuItem {
   text: string;
   path: string;
   icon: React.ReactNode;
+  badge?: string;
+  // Hidden unless the user has this permission; no permission = always shown.
+  permission?: Permission;
 }
 
 interface MenuItem {
@@ -37,6 +48,7 @@ interface MenuItem {
   path?: string;
   icon: React.ReactNode;
   badge?: string;
+  permission?: Permission;
   children?: SubMenuItem[];
 }
 
@@ -58,10 +70,7 @@ const SidebarItem = ({
   badge,
 }: SidebarItemProps) => {
   return (
-    <Link
-      to={to}
-      className="!no-underline hover:!no-underline focus:!no-underline"
-    >
+    <Link to={to}>
       <div
         className={`relative flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
           collapsed ? "justify-center px-0" : "px-3 gap-3"
@@ -99,79 +108,169 @@ const SidebarItem = ({
 
 export default function ModernSideBar() {
   const { theme, setTheme } = useTheme();
+  const { logout, hasPermission } = useAuth();
+  const { pendingCount } = useLeaveNotifications();
+  const pendingBadge = pendingCount ? String(pendingCount) : undefined;
   const [collapsed, setCollapsed] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
-    "User Management": false,
-  });
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const toggleSubmenu = (text: string) => {
-    setOpenSubmenus((prev) => ({
-      ...prev,
-      [text]: !prev[text],
-    }));
+  // No need to reset state afterwards: logout always ends the session,
+  // and RequireAuth then replaces this whole layout with the login page.
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await logout();
+  };
+  // Groups the user hasn't toggled stay open while one of their pages is active.
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+
+  const toggleSubmenu = (text: string, currentlyOpen: boolean) => {
+    setOpenSubmenus((prev) => ({ ...prev, [text]: !currentlyOpen }));
   };
 
   const location = useLocation();
 
-  const menuItems: MenuItem[] = [
+  const allMenuItems: MenuItem[] = [
     {
       text: "Dashboard",
-      path: "/dashboard",
+      path: paths.dashboard,
       icon: <LayoutDashboard size={20} />,
+      permission: Permission.ViewAttendance,
     },
-    { text: "Analytics", path: "/analytics", icon: <BarChart2 size={20} /> },
+    // Everyone's own attendance and leave; the only menu plain employees get.
     {
-      text: "User Management",
-      icon: <Users size={20} />,
+      text: "My Attendance",
+      icon: <Fingerprint size={20} />,
       children: [
-        { text: "Users", path: "/users", icon: <UserCheck size={18} /> },
-        { text: "Roles", path: "/roles", icon: <Shield size={18} /> },
         {
-          text: "Permissions",
-          path: "/permissions",
-          icon: <KeyRound size={18} />,
+          text: "Clock In / Out",
+          path: paths.myAttendance,
+          icon: <Clock10Icon size={18} />,
+        },
+        {
+          text: "My History",
+          path: paths.myAttendanceHistory,
+          icon: <History size={18} />,
+        },
+        {
+          text: "My Leave",
+          path: paths.myLeaves,
+          icon: <Plane size={18} />,
         },
       ],
     },
     {
-      text: "Daily Attendance",
+      text: "Analytics",
+      path: "/analytics",
+      icon: <BarChart2 size={20} />,
+      permission: Permission.ViewAttendance,
+    },
+    {
+      text: "User Management",
+      icon: <Users size={20} />,
+      children: [
+        {
+          text: "Users",
+          path: paths.users,
+          icon: <UserCheck size={18} />,
+          permission: Permission.ViewUser,
+        },
+        {
+          text: "Roles",
+          path: paths.roles,
+          icon: <Shield size={18} />,
+          permission: Permission.ViewRole,
+        },
+        {
+          text: "Permissions",
+          path: paths.permissions,
+          icon: <KeyRound size={18} />,
+          permission: Permission.ViewPermission,
+        },
+      ],
+    },
+    {
+      text: "Staff Attendance",
       icon: <CalendarCheck size={20} />,
       children: [
         {
           text: "Overview",
-          path: "admin/attendances/dashboard",
+          path: paths.attendance,
           icon: <Activity size={20} />,
+          permission: Permission.ViewAttendance,
         },
         {
           text: "Add Attendance",
-          path: "admin/attendance/create",
+          path: paths.attendanceCreate,
           icon: <Plus size={20} />,
+          permission: Permission.CreateAttendance,
+        },
+        {
+          text: "Shifts",
+          path: paths.shifts,
+          icon: <Clock10Icon size={18} />,
+          permission: Permission.ViewShift,
         },
       ],
     },
     {
       text: "Leave Management",
       icon: <CalendarOff size={20} />,
+      badge: pendingBadge,
       children: [
         {
-          text: "Leave Requests",
-          path: "/leaves/requests",
+          text: "Requests",
+          path: paths.leaveRequests,
           icon: <Bell size={20} />,
+          badge: pendingBadge,
+          permission: Permission.ViewLeave,
         },
         {
           text: "Leave History",
-          path: "/leaves/history",
+          path: paths.leaveHistory,
           icon: <Clock10Icon size={20} />,
+          permission: Permission.ViewLeave,
         },
       ],
     },
-    { text: "Payroll", path: "/payroll", icon: <DollarSign size={20} /> },
-    { text: "Settings", path: "/settings", icon: <Settings size={20} /> },
+    // Placeholders for HR features that don't exist yet.
+    {
+      text: "Payroll",
+      path: "/payroll",
+      icon: <DollarSign size={20} />,
+      permission: Permission.ViewAttendance,
+    },
+    {
+      text: "Settings",
+      path: "/settings",
+      icon: <Settings size={20} />,
+      permission: Permission.ViewAttendance,
+    },
   ];
 
-  const isChildActive = (children?: SubMenuItem[]) => {
-    return children?.some((child) => location.pathname === child.path);
-  };
+  const allowed = (item: { permission?: Permission }) =>
+    !item.permission || hasPermission(item.permission);
+
+  // Drop items the user can't open, and groups left with no children.
+  const menuItems = allMenuItems
+    .filter(allowed)
+    .map((item) =>
+      item.children
+        ? { ...item, children: item.children.filter(allowed) }
+        : item,
+    )
+    .filter((item) => !item.children || item.children.length > 0);
+
+  // "/users" is active on "/users" and on sub-pages like "/users/5/edit".
+  const matches = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+  // Among siblings, only the most specific match is active, so
+  // "/attendance/new" highlights "Add Attendance" but not "Overview".
+  const activeChildPath = (children: SubMenuItem[]) =>
+    children
+      .filter((child) => matches(child.path))
+      .sort((a, b) => b.path.length - a.path.length)[0]?.path;
 
   return (
     <aside
@@ -219,25 +318,30 @@ export default function ModernSideBar() {
       <nav className="flex-1 overflow-y-auto min-h-0 my-3 space-y-1 pr-1 text-slate-600 dark:text-zinc-400 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full">
         {menuItems.map((item) => {
           if (item.children) {
-            const hasActiveChild = isChildActive(item.children);
-            const isOpen = !!openSubmenus[item.text];
+            const activePath = activeChildPath(item.children);
+            const isOpen = openSubmenus[item.text] ?? !!activePath;
             return (
               <div key={item.text} className="space-y-1">
                 <button
                   onClick={() => {
                     if (collapsed) setCollapsed(false);
-                    toggleSubmenu(item.text);
+                    toggleSubmenu(item.text, isOpen);
                   }}
                   className={`w-full flex items-center py-2 rounded-xl cursor-pointer transition-all duration-200 group ${
                     collapsed ? "justify-center px-0" : "px-3 gap-3"
                   } ${
-                    hasActiveChild
+                    activePath
                       ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold"
                       : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/70 hover:text-slate-900 dark:hover:text-zinc-100"
                   }`}
                 >
-                  <div className="text-xl flex items-center justify-center shrink-0">
+                  <div className="relative text-xl flex items-center justify-center shrink-0">
                     {item.icon}
+                    {collapsed && item.badge && (
+                      <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-4 text-center">
+                        {item.badge}
+                      </span>
+                    )}
                   </div>
 
                   {!collapsed && (
@@ -245,9 +349,15 @@ export default function ModernSideBar() {
                       <span className="font-medium text-sm whitespace-nowrap overflow-hidden">
                         {item.text}
                       </span>
+                      {/* When open, the child item shows the count instead. */}
+                      {item.badge && !isOpen && (
+                        <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500 text-white">
+                          {item.badge}
+                        </span>
+                      )}
                       <ChevronDown
                         size={16}
-                        className={`ml-auto transition-transform duration-200 ${
+                        className={`${item.badge && !isOpen ? "" : "ml-auto"} transition-transform duration-200 ${
                           isOpen ? "rotate-180" : ""
                         }`}
                       />
@@ -269,7 +379,8 @@ export default function ModernSideBar() {
                         icon={child.icon}
                         text={child.text}
                         to={child.path}
-                        active={location.pathname === child.path}
+                        active={child.path === activePath}
+                        badge={child.badge}
                         collapsed={false}
                       />
                     ))}
@@ -286,7 +397,7 @@ export default function ModernSideBar() {
               text={item.text}
               to={item.path!}
               badge={item.badge}
-              active={location.pathname === item.path}
+              active={matches(item.path!)}
               collapsed={collapsed}
             />
           );
@@ -325,38 +436,24 @@ export default function ModernSideBar() {
           </div>
         </div>
 
-        {/* User Profile Info */}
-        <div
-          className={`flex items-center py-1.5 ${
-            collapsed ? "justify-center" : "gap-2.5 px-2"
-          }`}
-        >
-          <img
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-            alt="User Avatar"
-            className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-zinc-700 shrink-0"
-          />
-          {!collapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">
-                Jane Doe
-              </span>
-              <span className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">
-                admin@gsmanagement.com
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div onClick={() => console.log("Logging out...")}>
-          <SidebarItem
-            icon={<LogOut size={18} className="text-rose-500" />}
-            text="Logout"
-            to="/logout"
-            collapsed={collapsed}
-          />
-        </div>
+        {/* User Profile Info: opens the profile popup */}
+        <ProfileMenu
+          collapsed={collapsed}
+          onLogout={() => setShowLogoutConfirm(true)}
+        />
       </div>
+
+      {showLogoutConfirm && (
+        <ConfirmDialog
+          title="Log out"
+          message="Are you sure you want to log out?"
+          confirmLabel="Log out"
+          busyLabel="Logging out..."
+          busy={loggingOut}
+          onConfirm={handleLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
     </aside>
   );
 }

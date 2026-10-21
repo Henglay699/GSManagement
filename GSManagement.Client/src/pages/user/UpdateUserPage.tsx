@@ -1,51 +1,43 @@
-import { useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import UserForm from "../../components/user/Userform";
-import {
-  fetchUsersById,
-  updateUser,
-  UserFormData,
-} from "../../services/userservice";
-import axios from "axios";
 import { Loader2 } from "lucide-react";
+import UserForm from "../../components/user/UserForm";
+import { useAsync } from "../../hooks/useAsync";
+import {
+  fetchUserById,
+  removeUserPhoto,
+  updateUser,
+  uploadUserPhoto,
+} from "../../services/userService";
+import type { PhotoChange, UserFormData } from "../../types/user";
 
 function UpdateUserPage() {
   const { id } = useParams();
-  const [initialData, setInitialData] = useState<UserFormData | undefined>();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [errorMessage, setError] = useState<string>();
+  const userId = Number(id);
 
-  useEffect(() => {
-    if (!id) return;
+  const { data: user, loading, error } = useAsync(
+    useCallback(() => fetchUserById(userId), [userId]),
+    "Fail to load user",
+  );
 
-    const loadUser = async () => {
-      setLoading(true);
-      try {
-        const foundUser = await fetchUsersById(Number(id));
-        setInitialData({
-          userName: foundUser.userName,
-          email: foundUser.email,
-          isActive: foundUser.isActive,
-          roleIds: foundUser.roles ? foundUser.roles.map((r) => r.id) : [],
-        });
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          const message = error.response?.data.error;
-          setError(message ?? "Fail to load user");
-        } else {
-          setError("An unexpected error occurred");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const initialData = useMemo<UserFormData | undefined>(
+    () =>
+      user && {
+        userName: user.userName,
+        email: user.email,
+        isActive: user.isActive,
+        roleIds: user.roles?.map((r) => r.id) ?? [],
+      },
+    [user],
+  );
 
-    loadUser();
-  }, [id]);
-
-  const handleUpdate = async (data: UserFormData) => {
-    if (!id) return;
-    await updateUser(Number(id), data);
+  const handleUpdate = async (data: UserFormData, photo: PhotoChange) => {
+    await updateUser(userId, data);
+    if (photo) {
+      await uploadUserPhoto(userId, photo);
+    } else if (photo === null) {
+      await removeUserPhoto(userId);
+    }
   };
 
   if (loading) {
@@ -57,10 +49,10 @@ function UpdateUserPage() {
     );
   }
 
-  if (errorMessage) {
+  if (error) {
     return (
       <div className="py-20 text-center text-sm font-medium text-rose-500 dark:text-rose-400">
-        {errorMessage}
+        {error}
       </div>
     );
   }
@@ -68,6 +60,7 @@ function UpdateUserPage() {
   return (
     <UserForm
       initialValues={initialData}
+      initialImageUrl={user?.imageUrl}
       onSubmit={handleUpdate}
       isEditMode={true}
     />

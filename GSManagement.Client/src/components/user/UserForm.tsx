@@ -1,65 +1,53 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserFormData } from "../../services/userservice";
-import { fetchRoles } from "../../services/roleservice";
-import Role from "../../models/role";
+import { useAsync } from "../../hooks/useAsync";
+import { getErrorMessage } from "../../lib/api";
+import { paths } from "../../lib/paths";
+import { fetchRoles } from "../../services/roleService";
+import type { PhotoChange, UserFormData } from "../../types/user";
 import {
   Loader2,
   ArrowLeft,
   ShieldCheck,
   User as UserIcon,
 } from "lucide-react";
-import axios from "axios";
+import PhotoPicker from "./PhotoPicker";
 
 interface UserFormProps {
   initialValues?: UserFormData;
-  onSubmit: (data: UserFormData) => Promise<void>;
+  initialImageUrl?: string | null;
+  onSubmit: (data: UserFormData, photo: PhotoChange) => Promise<void>;
   isEditMode?: boolean;
 }
 
 function UserForm({
   initialValues,
+  initialImageUrl,
   onSubmit,
   isEditMode = false,
 }: UserFormProps) {
   const navigate = useNavigate();
-  const [userName, setUserName] = useState("");
-  const [email, setEmail] = useState("");
-  const [isActive, setIsActive] = useState(true);
+  // Edit pages only render this form once the user has loaded, so the
+  // initial values can seed state directly.
+  const [userName, setUserName] = useState(initialValues?.userName ?? "");
+  const [email, setEmail] = useState(initialValues?.email ?? "");
+  const [isActive, setIsActive] = useState(initialValues?.isActive ?? true);
   const [password, setPassword] = useState("");
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>(
+    initialValues?.roleIds ?? [],
+  );
 
-  // Role Selection States
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
-  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [photo, setPhoto] = useState<PhotoChange>(undefined);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch available roles on mount
-  useEffect(() => {
-    const loadRoles = async () => {
-      try {
-        // Pass pagination arguments or handle the PagedResult wrapper
-        const data = await fetchRoles(1, 100, "");
-        setAvailableRoles(data.items ?? []); // Extract items array
-      } catch (err) {
-        console.error("Failed to fetch roles", err);
-      }
-    };
-    loadRoles();
-  }, []);
-
-  // Pre-fill fields when initialValues change
-  useEffect(() => {
-    if (initialValues) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUserName(initialValues.userName || "");
-      setEmail(initialValues.email || "");
-      setIsActive(initialValues.isActive ?? true);
-      setSelectedRoleIds(initialValues.roleIds || []);
-    }
-  }, [initialValues]);
+  const roles = useAsync(
+    useCallback(() => fetchRoles(1, 100, ""), []),
+    "Failed to load roles.",
+  );
+  const availableRoles = roles.data?.items ?? [];
+  const loadingRoles = roles.loading;
 
   const handleRoleToggle = (roleId: number) => {
     setSelectedRoleIds((prev) =>
@@ -73,23 +61,22 @@ function UserForm({
     e.preventDefault();
     setSubmitting(true);
     setErrorMessage(null);
-    setLoadingRoles(true);
     try {
-      await onSubmit({
-        userName,
-        email,
-        isActive,
-        roleIds: selectedRoleIds,
-        ...(password.trim() ? { password } : {}),
-      });
-      navigate("/users");
+      await onSubmit(
+        {
+          userName,
+          email,
+          isActive,
+          roleIds: selectedRoleIds,
+          ...(password.trim() ? { password } : {}),
+        },
+        photo,
+      );
+      navigate(paths.users);
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setErrorMessage(error.response?.data.error);
-      }
+      setErrorMessage(getErrorMessage(error, "Failed to save user."));
     } finally {
       setSubmitting(false);
-      setLoadingRoles(false);
     }
   };
 
@@ -151,7 +138,10 @@ function UserForm({
             {/* LEFT COLUMN: Assign Roles */}
             <div className="bg-slate-50/70 dark:bg-zinc-800/50 p-5 rounded-xl border border-slate-200/80 dark:border-zinc-800 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-zinc-700">
-                <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <ShieldCheck
+                  size={18}
+                  className="text-indigo-600 dark:text-indigo-400"
+                />
                 <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
                   Assign Roles
                 </h2>
@@ -195,11 +185,21 @@ function UserForm({
             {/* RIGHT COLUMN: User Account Details */}
             <div className="lg:col-span-2 space-y-5">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-zinc-800">
-                <UserIcon size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <UserIcon
+                  size={18}
+                  className="text-indigo-600 dark:text-indigo-400"
+                />
                 <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
                   Account Details
                 </h2>
               </div>
+
+              <PhotoPicker
+                initialImageUrl={initialImageUrl}
+                photo={photo}
+                onChange={setPhoto}
+                onError={setErrorMessage}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
