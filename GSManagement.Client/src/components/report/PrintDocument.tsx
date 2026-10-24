@@ -10,6 +10,8 @@ interface PrintDocumentProps {
   // One signature line per role, e.g. "Prepared by (HR)".
   signatures: string[];
   landscape?: boolean;
+  // Tighter spacing so a whole month of daily rows fits on one A4 page.
+  compact?: boolean;
   children: ReactNode;
 }
 
@@ -23,6 +25,7 @@ export default function PrintDocument({
   figures,
   signatures,
   landscape = false,
+  compact = false,
   children,
 }: PrintDocumentProps) {
   const generated = new Date().toLocaleString("en-GB", {
@@ -34,7 +37,7 @@ export default function PrintDocument({
   });
 
   return (
-    <div className={`print-only pd ${landscape ? "pd-landscape" : ""}`}>
+    <div className={`print-only pd ${landscape ? "pd-landscape" : ""} ${compact ? "pd-compact" : ""}`}>
       <div className="pd-head">
         <div className="pd-brand">
           <img src={logo} alt="" />

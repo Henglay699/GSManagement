@@ -37,4 +37,9 @@
     <ProjectReference Include="..\GSManagement.Domain\GSManagement.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Company logo for the Excel exports (ReportExcelBuilder); a small copy of the client's logo.png. -->
+    <EmbeddedResource Include="Assets\report-logo.png" LogicalName="report-logo.png" />
+  </ItemGroup>
+
 </Project>

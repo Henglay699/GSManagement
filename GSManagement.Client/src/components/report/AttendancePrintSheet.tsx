@@ -32,6 +32,7 @@ export default function AttendancePrintSheet({ summary: s }: { summary: MonthSum
 
   return (
     <PrintDocument
+      compact
       title="Employee Attendance Record"
       meta={[
         ["Employee", e.userName],

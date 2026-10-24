@@ -41,11 +41,27 @@ public static class ReportExcelBuilder
         headers.AddRange(["Missed clock-outs", "Hours worked", "Overtime (h)", "Attendance", "Punctuality"]);
         var lastCol = headers.Count;
 
+        var x = report.Totals;
+        var leaveByType = string.Join(" · ", LeaveTypes.Select(lt =>
+            $"{lt} {report.Employees.Sum(r => r.Totals.LeaveByType.GetValueOrDefault(lt)).ToString("0.#", Inv)}"));
+
         var row = Letterhead(ws, "Monthly Attendance Report", lastCol,
         [
             ("Period", PeriodLabel(report.Year, report.Month, report.PeriodEnd)),
-            ("Working days", $"{report.WorkingDays} (Monday to Saturday, excluding public holidays)"),
-            ("Employees", report.Totals.Employees.ToString(Inv)),
+            ("Working days", $"{report.WorkingDays} (Mon–Sat, excl. public holidays)"),
+            ("Employees", x.Employees.ToString(Inv)),
+            ("Leave by type (days)", leaveByType),
+        ]);
+        row = Figures(ws, row, lastCol, perLine: 4,
+        [
+            ("Avg. attendance", $"{x.AverageAttendanceRate.ToString("0.#", Inv)}%"),
+            ("Avg. punctuality", $"{x.AveragePunctualityRate.ToString("0.#", Inv)}%"),
+            ("Hours worked", x.WorkedHours.ToString("#,##0", Inv)),
+            ("Overtime", $"{x.OvertimeHours.ToString("0.#", Inv)}h"),
+            ("Late arrivals", x.LateDays.ToString(Inv)),
+            ("Absent days", x.AbsentDays.ToString(Inv)),
+            ("Leave days", x.LeaveDays.ToString("0.#", Inv)),
+            ("Missed clock-outs", x.MissedClockOuts.ToString(Inv)),
         ]);
 
         var headerRow = row;
@@ -86,7 +102,6 @@ public static class ReportExcelBuilder
 
         // Totals: sums for counts, averages for the rates.
         row++;
-        var x = report.Totals;
         ws.Cell(row, 2).Value = "Total";
         ws.Cell(row, 6).Value = x.PresentDays;
         ws.Cell(row, 8).Value = x.LateDays;
@@ -141,35 +156,31 @@ public static class ReportExcelBuilder
             ("Email", e.Email),
             ("Role", string.IsNullOrWhiteSpace(e.Roles) ? "–" : e.Roles),
             ("Period", PeriodLabel(s.Year, s.Month, s.PeriodEnd)),
+            ("Working days", t.WorkingDays.ToString(Inv)),
+        ]);
+        row = Figures(ws, row, lastCol, perLine: 5,
+        [
+            ("Attendance", $"{t.AttendanceRate.ToString("0.#", Inv)}%"),
+            ("Punctuality", $"{t.PunctualityRate.ToString("0.#", Inv)}%"),
+            ("Present", $"{t.PresentDays} / {t.WorkingDays}"),
+            ("Late", $"{t.LateDays}d · {t.LateMinutes} min"),
+            ("Absent", $"{t.AbsentDays}d"),
+            ("Leave", $"{t.LeaveDays.ToString("0.#", Inv)}d"),
+            ("Hours worked", $"{t.WorkedHours.ToString("0.#", Inv)}h"),
+            ("Overtime", $"{t.OvertimeHours.ToString("0.#", Inv)}h"),
+            ("Left early", $"{t.EarlyLeaveDays}d"),
+            ("Missed clock-outs", t.MissedClockOuts.ToString(Inv)),
         ]);
 
-        // Summary: two label/value pairs per line.
-        (string, string)[] summary =
-        [
-            ("Working days", $"{t.WorkingDays}"),
-            ("Attendance", $"{t.AttendanceRate.ToString("0.#", Inv)}%"),
-            ("Present days", $"{t.PresentDays}"),
-            ("Punctuality", $"{t.PunctualityRate.ToString("0.#", Inv)}%"),
-            ("Late", $"{t.LateDays} day(s), {t.LateMinutes} min"),
-            ("Hours worked", $"{t.WorkedHours.ToString("0.#", Inv)} h"),
-            ("Absent", $"{t.AbsentDays} day(s)"),
-            ("Overtime", $"{t.OvertimeHours.ToString("0.#", Inv)} h"),
-            ("Leave", $"{t.LeaveDays.ToString("0.#", Inv)} day(s){LeaveBreakdown(t)}"),
-            ("Missed clock-outs", $"{t.MissedClockOuts}"),
-        ];
-        ws.Cell(row, 1).Value = "SUMMARY";
-        ws.Cell(row, 1).Style.Font.SetBold().Font.SetFontColor(Muted).Font.SetFontSize(9);
-        row++;
-        var summaryTop = row;
-        for (var k = 0; k < summary.Length; k += 2)
+        // Section title, as on the printout.
+        ws.Cell(row, 1).Value = "DAILY RECORD";
+        ws.Cell(row, 1).Style.Font.SetBold().Font.SetFontSize(8).Font.SetFontColor(XLColor.FromHtml("#334155"));
+        var leaveTaken = LeaveTaken(t);
+        if (leaveTaken.Length > 0)
         {
-            SummaryPair(ws, row, 1, summary[k]);
-            if (k + 1 < summary.Length) SummaryPair(ws, row, 6, summary[k + 1]);
-            row++;
+            ws.Cell(row, 3).Value = $"Leave taken: {leaveTaken}";
+            ws.Cell(row, 3).Style.Font.SetFontSize(8).Font.SetFontColor(Muted);
         }
-        var box = ws.Range(summaryTop, 1, row - 1, lastCol);
-        box.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        box.Style.Border.OutsideBorderColor = Line;
         row++;
 
         var headerRow = row;
@@ -225,29 +236,93 @@ public static class ReportExcelBuilder
 
     // ---------------------------------------------------------------- helpers
 
-    /// <summary>Company name, report title and a label/value block. Returns the next free row.</summary>
+    /// <summary>
+    /// The printout's letterhead: logo, company name and legal name on the left,
+    /// report title and generated time on the right, a heavy rule under both,
+    /// then the details as small uppercase labels over bold values.
+    /// Returns the next free row.
+    /// </summary>
     private static int Letterhead(IXLWorksheet ws, string title, int lastCol, (string Label, string Value)[] meta)
     {
-        ws.Cell(1, 1).Value = Company;
-        ws.Range(1, 1, 1, lastCol).Merge().Style.Font.SetBold().Font.SetFontSize(15).Font.SetFontColor(Ink);
-        ws.Row(1).Height = 22;
+        ws.Row(1).Height = 20;
+        ws.Row(2).Height = 14;
 
-        ws.Cell(2, 1).Value = title.ToUpperInvariant();
-        ws.Range(2, 1, 2, lastCol).Merge().Style.Font.SetBold().Font.SetFontSize(11).Font.SetFontColor(Muted);
-        ws.Range(2, 1, 2, lastCol).Style.Border.BottomBorder = XLBorderStyleValues.Medium;
-        ws.Range(2, 1, 2, lastCol).Style.Border.BottomBorderColor = Ink;
-
-        var row = 4;
-        foreach (var (label, value) in meta.Append(("Generated", DateTime.Now.ToString("dd MMM yyyy, HH:mm", Inv))))
+        if (Logo.Value is { } logo)
         {
-            ws.Cell(row, 1).Value = label;
-            ws.Range(row, 1, row, 2).Merge().Style.Font.SetFontColor(Muted);
-            ws.Cell(row, 3).Value = value;
-            ws.Range(row, 3, row, lastCol).Merge().Style.Font.SetBold().Font.SetFontColor(Ink);
-            row++;
+            using var stream = new MemoryStream(logo);
+            ws.AddPicture(stream).MoveTo(ws.Cell(1, 1), 2, 2).WithSize(40, 40);
         }
-        return row + 1;
+
+        // Company block, starting after the logo.
+        var split = Math.Max(3, lastCol / 2);
+        ws.Cell(1, 2).Value = "Grateful Solutions";
+        ws.Range(1, 2, 1, split).Merge().Style.Font.SetBold().Font.SetFontSize(13).Font.SetFontColor(Ink);
+        ws.Cell(2, 2).Value = "Cambodia Co., Ltd";
+        ws.Range(2, 2, 2, split).Merge().Style.Font.SetFontSize(8).Font.SetFontColor(Muted);
+
+        // Title block on the right.
+        ws.Cell(1, split + 1).Value = title.ToUpperInvariant();
+        var t = ws.Range(1, split + 1, 1, lastCol).Merge();
+        t.Style.Font.SetBold().Font.SetFontSize(13).Font.SetFontColor(Ink);
+        t.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        ws.Cell(2, split + 1).Value = $"Generated {DateTime.Now.ToString("dd MMM yyyy, HH:mm", Inv)}";
+        var g = ws.Range(2, split + 1, 2, lastCol).Merge();
+        g.Style.Font.SetFontSize(8).Font.SetFontColor(Muted);
+        g.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+        var rule = ws.Range(2, 1, 2, lastCol);
+        rule.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
+        rule.Style.Border.BottomBorderColor = Ink;
+
+        // Details: label over value, spread across the sheet.
+        const int labelRow = 4, valueRow = 5;
+        var span = Math.Max(1, lastCol / meta.Length);
+        for (var k = 0; k < meta.Length; k++)
+        {
+            var from = 1 + k * span;
+            var to = k == meta.Length - 1 ? lastCol : from + span - 1;
+            ws.Cell(labelRow, from).Value = meta[k].Label.ToUpperInvariant();
+            ws.Range(labelRow, from, labelRow, to).Merge().Style.Font.SetBold().Font.SetFontSize(7).Font.SetFontColor(Muted);
+            ws.Cell(valueRow, from).Value = meta[k].Value;
+            ws.Range(valueRow, from, valueRow, to).Merge().Style.Font.SetBold().Font.SetFontColor(Ink);
+        }
+        return valueRow + 2;
     }
+
+    /// <summary>Headline figures as a grid of boxes, like the printout. Returns the next free row.</summary>
+    private static int Figures(IXLWorksheet ws, int row, int lastCol, int perLine, (string Label, string Value)[] figures)
+    {
+        var span = Math.Max(1, lastCol / perLine);
+        for (var k = 0; k < figures.Length; k++)
+        {
+            var labelRow = row + k / perLine * 2;
+            var slot = k % perLine;
+            var from = 1 + slot * span;
+            var to = slot == perLine - 1 ? lastCol : from + span - 1;
+
+            ws.Cell(labelRow, from).Value = figures[k].Label.ToUpperInvariant();
+            ws.Range(labelRow, from, labelRow, to).Merge().Style.Font.SetFontSize(7).Font.SetFontColor(Muted);
+            ws.Cell(labelRow + 1, from).Value = figures[k].Value;
+            ws.Range(labelRow + 1, from, labelRow + 1, to).Merge().Style.Font.SetBold().Font.SetFontSize(11).Font.SetFontColor(Ink);
+
+            var box = ws.Range(labelRow, from, labelRow + 1, to);
+            box.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            box.Style.Border.OutsideBorderColor = Line;
+            box.Style.Alignment.Indent = 1;
+        }
+        var lines = (figures.Length + perLine - 1) / perLine;
+        return row + lines * 2 + 1;
+    }
+
+    // The company logo, embedded in the API (Assets/report-logo.png); null if missing.
+    private static readonly Lazy<byte[]?> Logo = new(() =>
+    {
+        using var stream = typeof(ReportExcelBuilder).Assembly.GetManifestResourceStream("report-logo.png");
+        if (stream is null) return null;
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        return ms.ToArray();
+    });
 
     private static void WriteHeader(IXLWorksheet ws, int row, IReadOnlyList<string> headers)
     {
@@ -269,14 +344,6 @@ public static class ReportExcelBuilder
         r.Style.Border.TopBorderColor = Ink;
     }
 
-    private static void SummaryPair(IXLWorksheet ws, int row, int col, (string Label, string Value) p)
-    {
-        ws.Cell(row, col).Value = p.Label;
-        ws.Range(row, col, row, col + 1).Merge().Style.Font.SetFontColor(Muted);
-        ws.Cell(row, col + 2).Value = p.Value;
-        ws.Range(row, col + 2, row, col + 4).Merge().Style.Font.SetBold();
-    }
-
     /// <summary>Signature lines spread across the sheet. Returns the last row used.</summary>
     private static int Signatures(IXLWorksheet ws, int row, int lastCol, string[] roles)
     {
@@ -290,7 +357,7 @@ public static class ReportExcelBuilder
             line.Style.Border.BottomBorderColor = Ink;
             ws.Cell(row + 1, from).Value = roles[k];
             ws.Cell(row + 1, from).Style.Font.SetBold();
-            ws.Cell(row + 2, from).Value = "Name / Date:";
+            ws.Cell(row + 2, from).Value = "Name, signature & date";
             ws.Cell(row + 2, from).Style.Font.SetFontColor(Muted).Font.SetFontSize(9);
         }
         ws.Row(row).Height = 34;
@@ -315,7 +382,7 @@ public static class ReportExcelBuilder
         p.Margins.Top = 0.5;
         p.Margins.Bottom = 0.6;
         p.SetRowsToRepeatAtTop(headerRow, headerRow);
-        p.Footer.Left.AddText($"{Company} · {title}");
+        p.Footer.Left.AddText($"{Company} · Confidential");
         p.Footer.Right.AddText("Page ");
         p.Footer.Right.AddText(XLHFPredefinedText.PageNumber);
         p.Footer.Right.AddText(" of ");
@@ -338,13 +405,9 @@ public static class ReportExcelBuilder
         return $"{MonthName(year, month)} ({start.ToString("d MMM", Inv)} – {end.ToString("d MMM yyyy", Inv)})";
     }
 
-    private static string LeaveBreakdown(SummaryTotalsDto t)
-    {
-        var parts = LeaveTypes.Where(lt => t.LeaveByType.GetValueOrDefault(lt) > 0)
-            .Select(lt => $"{lt} {t.LeaveByType[lt].ToString("0.#", Inv)}");
-        var text = string.Join(", ", parts);
-        return text.Length > 0 ? $" ({text})" : "";
-    }
+    private static string LeaveTaken(SummaryTotalsDto t) =>
+        string.Join(", ", LeaveTypes.Where(lt => t.LeaveByType.GetValueOrDefault(lt) > 0)
+            .Select(lt => $"{lt} {t.LeaveByType[lt].ToString("0.#", Inv)}"));
 
     private static string Notes(SummaryDayDto d)
     {

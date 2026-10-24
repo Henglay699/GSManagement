@@ -515,3 +515,65 @@ body {
   font-size: 7pt;
   color: #64748b;
 }
+
+/* Compact: one employee's month (up to 31 daily rows) on a single A4 page.
+   Budget ≈ 271mm of printable height: header, one line of details, two rows
+   of figures, ~16px per day and a short signature block. */
+.pd-compact {
+  font-size: 8.5pt;
+  line-height: 1.3;
+}
+.pd-compact .pd-head {
+  padding-bottom: 6px;
+}
+.pd-compact .pd-brand img {
+  height: 32px;
+}
+.pd-compact .pd-company {
+  font-size: 12pt;
+}
+.pd-compact .pd-title h1 {
+  font-size: 12pt;
+}
+.pd-compact .pd-meta {
+  grid-template-columns: repeat(5, auto);
+  justify-content: space-between;
+  gap: 2px 16px;
+  margin: 8px 0;
+}
+.pd-compact .pd-figures {
+  margin-bottom: 8px;
+}
+.pd-compact .pd-figures > div {
+  padding: 3px 7px;
+}
+.pd-compact .pd-figures span {
+  font-size: 6.5pt;
+}
+.pd-compact .pd-figures strong {
+  font-size: 9.5pt;
+}
+.pd-compact .pd-section {
+  margin: 8px 0 4px;
+}
+.pd-compact .pd-table {
+  font-size: 7.5pt;
+  line-height: 1.25;
+}
+.pd-compact .pd-table th {
+  padding: 3px 5px;
+}
+.pd-compact .pd-table td {
+  padding: 1.5px 5px;
+}
+.pd-compact .pd-status {
+  font-size: 7pt;
+  line-height: 1.3;
+  padding: 0 4px;
+}
+.pd-compact .pd-signatures {
+  margin-top: 22px;
+}
+.pd-compact .pd-sign-line {
+  height: 26px;
+}
