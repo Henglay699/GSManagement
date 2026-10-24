@@ -6,8 +6,8 @@ import { paths } from "../../lib/paths";
 import { fetchRoles } from "../../services/roleService";
 import type { PhotoChange, UserFormData } from "../../types/user";
 import {
-  Loader2,
   ArrowLeft,
+  Loader2,
   ShieldCheck,
   User as UserIcon,
 } from "lucide-react";
@@ -84,22 +84,22 @@ function UserForm({
     <div className="w-full space-y-6">
       <form onSubmit={handleSubmit}>
         {/* Full Screen Main Container */}
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 space-y-6">
+        <div className="bg-surface p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-line space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
+          <div className="flex items-center justify-between pb-4 border-b border-line">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                className="p-2 rounded-xl text-fg-2 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 <ArrowLeft size={20} />
               </button>
               <div>
-                <h1 className="text-xl font-bold text-slate-800 dark:text-zinc-100">
+                <h1 className="text-xl font-bold text-slate-800 dark:text-white">
                   {isEditMode ? "Update User" : "Create New User"}
                 </h1>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                <p className="text-xs text-fg-2">
                   {isEditMode
                     ? "Modify existing user account details and role permissions"
                     : "Fill in the details below to onboard a new user"}
@@ -112,7 +112,7 @@ function UserForm({
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
+                className="px-4 py-2 text-sm font-medium text-fg-2 bg-slate-100 dark:bg-subtle hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -136,24 +136,24 @@ function UserForm({
           {/* Grid Layout: Assign Roles on Left, Account Info on Right */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* LEFT COLUMN: Assign Roles */}
-            <div className="bg-slate-50/70 dark:bg-zinc-800/50 p-5 rounded-xl border border-slate-200/80 dark:border-zinc-800 space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-zinc-700">
+            <div className="bg-slate-50/70 dark:bg-subtle p-5 rounded-xl border border-slate-200/80 dark:border-line space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-line-strong">
                 <ShieldCheck
                   size={18}
                   className="text-indigo-600 dark:text-indigo-400"
                 />
-                <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wide">
                   Assign Roles
                 </h2>
               </div>
 
               {loadingRoles ? (
-                <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500 py-4">
+                <div className="flex items-center gap-2 text-xs text-fg-3 dark:text-white0 py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400" />
                   Loading roles...
                 </div>
               ) : availableRoles.length === 0 ? (
-                <p className="text-xs text-slate-400 dark:text-zinc-500 italic py-2">
+                <p className="text-xs text-fg-3 dark:text-white0 italic py-2">
                   No roles available
                 </p>
               ) : (
@@ -168,7 +168,7 @@ function UserForm({
                         className={`flex items-center justify-between w-full px-4 py-3 rounded-xl text-xs font-medium border text-left transition-all ${
                           isChecked
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                            : "bg-surface text-fg-2 border-slate-200 dark:border-line-strong hover:bg-slate-100 dark:hover:bg-zinc-800"
                         }`}
                       >
                         <span>{role.roleName}</span>
@@ -184,12 +184,12 @@ function UserForm({
 
             {/* RIGHT COLUMN: User Account Details */}
             <div className="lg:col-span-2 space-y-5">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2 pb-2 border-b border-line">
                 <UserIcon
                   size={18}
                   className="text-indigo-600 dark:text-indigo-400"
                 />
-                <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wide">
                   Account Details
                 </h2>
               </div>
@@ -203,13 +203,13 @@ function UserForm({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-fg-2 uppercase mb-1">
                     Username
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-sm text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
                     placeholder="e.g. john_doe"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
@@ -217,13 +217,13 @@ function UserForm({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-fg-2 uppercase mb-1">
                     Email Address
                   </label>
                   <input
                     type="email"
                     required
-                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-sm text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
                     placeholder="e.g. john@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -232,13 +232,13 @@ function UserForm({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 uppercase mb-1">
+                <label className="block text-xs font-semibold text-fg-2 uppercase mb-1">
                   {isEditMode ? "New Password (Optional)" : "Password"}
                 </label>
                 <input
                   type="password"
                   required={!isEditMode}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-sm text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
                   placeholder={
                     isEditMode
                       ? "Leave blank to keep current password"
@@ -255,11 +255,11 @@ function UserForm({
                   id="isActiveToggle"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 dark:border-zinc-600 dark:bg-zinc-800 focus:ring-indigo-500 cursor-pointer"
+                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 dark:border-zinc-600 dark:bg-subtle focus:ring-indigo-500 cursor-pointer"
                 />
                 <label
                   htmlFor="isActiveToggle"
-                  className="text-sm font-medium text-slate-700 dark:text-zinc-300 cursor-pointer"
+                  className="text-sm font-medium text-fg-2 cursor-pointer"
                 >
                   Account Active
                 </label>

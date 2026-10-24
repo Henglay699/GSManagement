@@ -14,13 +14,13 @@ export default function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 dark:bg-[#0b0c0e]">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 dark:bg-canvas">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 space-y-5"
+        className="w-full max-w-sm bg-surface p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-line space-y-5"
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-slate-200/80 dark:border-zinc-800">
+          <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-slate-200/80 dark:border-line">
             <img
               src={logo}
               alt="Grateful Solutions"
@@ -28,10 +28,10 @@ export default function AuthCard({
             />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-zinc-100">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">
               {title}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-zinc-400">{subtitle}</p>
+            <p className="text-xs text-fg-2">{subtitle}</p>
           </div>
         </div>
         {children}
@@ -41,9 +41,9 @@ export default function AuthCard({
 }
 
 export const authInputClass =
-  "w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500";
+  "w-full px-4 py-2.5 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-sm text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0";
 export const authLabelClass =
-  "block text-xs font-semibold text-slate-700 dark:text-zinc-300 uppercase mb-1";
+  "block text-xs font-semibold text-fg-2 uppercase mb-1";
 export const authButtonClass =
   "w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-100 dark:shadow-none disabled:opacity-50";
 

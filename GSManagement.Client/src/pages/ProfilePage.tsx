@@ -24,11 +24,11 @@ import {
 import type { PhotoChange } from "../types/user";
 
 const inputClass =
-  "w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500";
+  "w-full px-4 py-2.5 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-sm text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0";
 const labelClass =
-  "block text-xs font-semibold text-slate-600 dark:text-zinc-400 mb-1.5";
+  "block text-xs font-semibold text-fg-2 mb-1.5";
 const cardClass =
-  "bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800";
+  "bg-surface rounded-2xl shadow-sm border border-slate-200 dark:border-line";
 const primaryButtonClass =
   "inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-100 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -55,15 +55,15 @@ function CardHeader({
   subtitle: string;
 }) {
   return (
-    <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-zinc-800">
+    <div className="flex items-center gap-3 px-6 py-4 border-b border-line">
       <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
         {icon}
       </div>
       <div>
-        <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+        <h2 className="text-sm font-bold text-slate-800 dark:text-white">
           {title}
         </h2>
-        <p className="text-xs text-slate-500 dark:text-zinc-400">{subtitle}</p>
+        <p className="text-xs text-fg-2">{subtitle}</p>
       </div>
     </div>
   );
@@ -103,7 +103,7 @@ function PasswordInput({
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Hide password" : "Show password"}
-          className="absolute inset-y-0 right-0 px-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+          className="absolute inset-y-0 right-0 px-3.5 flex items-center text-fg-3 hover:text-slate-600 dark:text-white0 dark:hover:text-zinc-300"
         >
           {visible ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
@@ -187,7 +187,7 @@ function EmailChangeCard({
 
         {step === "idle" && (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-slate-700 dark:text-zinc-300 truncate">
+            <span className="text-sm text-fg-2 truncate">
               {currentEmail}
             </span>
             <button
@@ -196,7 +196,7 @@ function EmailChangeCard({
                 setNotice(null);
                 setStep("form");
               }}
-              className="shrink-0 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 rounded-lg transition-colors"
+              className="shrink-0 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 rounded-2xl transition-colors"
             >
               Change
             </button>
@@ -228,7 +228,7 @@ function EmailChangeCard({
               onChange={setPassword}
               autoComplete="current-password"
             />
-            <p className="text-xs text-slate-400 dark:text-zinc-500">
+            <p className="text-xs text-fg-3 dark:text-white0">
               We'll send a 6-digit code to the new address to confirm it's yours.
             </p>
           </>
@@ -236,9 +236,9 @@ function EmailChangeCard({
 
         {step === "code" && (
           <>
-            <p className="text-sm text-slate-600 dark:text-zinc-300">
+            <p className="text-sm text-fg-2">
               Enter the 6-digit code we sent to{" "}
-              <strong className="text-slate-800 dark:text-zinc-100">{newEmail}</strong>.
+              <strong className="text-slate-800 dark:text-white">{newEmail}</strong>.
               It expires in 15 minutes.
             </p>
             <div>
@@ -259,7 +259,7 @@ function EmailChangeCard({
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               />
             </div>
-            <p className="text-xs text-slate-400 dark:text-zinc-500">
+            <p className="text-xs text-fg-3 dark:text-white0">
               Didn't get it? Check your spam folder, or{" "}
               <button
                 type="button"
@@ -275,12 +275,12 @@ function EmailChangeCard({
       </div>
 
       {step !== "idle" && (
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/60 rounded-b-2xl">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-line bg-slate-50/60 dark:bg-surface/60 rounded-b-2xl">
           <button
             type="button"
             onClick={reset}
             disabled={busy}
-            className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50"
+            className="px-4 py-2.5 text-sm font-medium text-fg-2 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong hover:bg-slate-50 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -374,7 +374,7 @@ function ProfilePage() {
       <div className={`${cardClass} overflow-hidden`}>
         <div className="h-28 bg-linear-to-r from-indigo-500 via-violet-500 to-sky-500" />
         <div className="px-6 pb-6 flex flex-col items-center text-center -mt-12">
-          <div className="w-24 h-24 rounded-full ring-4 ring-white dark:ring-zinc-900 bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center overflow-hidden shadow-md">
+          <div className="w-24 h-24 rounded-full ring-4 ring-white dark:ring-surface bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center overflow-hidden shadow-md">
             {user.imageUrl ? (
               <img
                 src={user.imageUrl}
@@ -387,10 +387,10 @@ function ProfilePage() {
               </span>
             )}
           </div>
-          <h1 className="mt-3 text-xl font-bold text-slate-800 dark:text-zinc-100">
+          <h1 className="mt-3 text-xl font-bold text-slate-800 dark:text-white">
             {user.userName}
           </h1>
-          <p className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
+          <p className="flex items-center gap-1.5 text-sm text-fg-2">
             <Mail size={14} />
             {user.email}
           </p>
@@ -406,7 +406,7 @@ function ProfilePage() {
                 </span>
               ))
             ) : (
-              <span className="text-xs italic text-slate-400 dark:text-zinc-500">
+              <span className="text-xs italic text-fg-3 dark:text-white0">
                 No roles assigned
               </span>
             )}
@@ -453,17 +453,17 @@ function ProfilePage() {
               />
             </div>
 
-            <p className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-zinc-500">
+            <p className="flex items-center gap-1.5 text-xs text-fg-3 dark:text-white0">
               <Lock size={12} className="shrink-0" />
               Your roles can only be changed by an administrator.
             </p>
           </div>
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/60 rounded-b-2xl">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-line bg-slate-50/60 dark:bg-surface/60 rounded-b-2xl">
             <button
               type="button"
               onClick={handleResetProfile}
               disabled={!profileDirty || savingProfile}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2.5 text-sm font-medium text-fg-2 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong hover:bg-slate-50 dark:hover:bg-zinc-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Discard
             </button>
@@ -514,7 +514,7 @@ function ProfilePage() {
                 autoComplete="new-password"
               />
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-900/60 rounded-b-2xl">
+            <div className="px-6 py-4 border-t border-line bg-slate-50/60 dark:bg-surface/60 rounded-b-2xl">
               <button
                 type="submit"
                 disabled={savingPassword}

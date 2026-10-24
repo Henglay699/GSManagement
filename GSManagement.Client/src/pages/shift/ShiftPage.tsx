@@ -1,13 +1,13 @@
-﻿import { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  Clock,
-  Plus,
-  Pencil,
-  Trash2,
-  ShieldCheck,
-  Loader2,
   AlertCircle,
   Calendar,
+  Clock,
+  Loader2,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import ShiftModal from "../../components/shift/ShiftModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -73,11 +73,11 @@ export default function ShiftPage() {
             <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
               <Clock size={22} />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-zinc-100">
+            <h1 className="text-xl font-bold text-fg">
               Shift Management
             </h1>
           </div>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-fg-2 mt-1">
             Configure employee shifts, working hours, grace periods, and default schedules.
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function ShiftPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="py-24 flex flex-col items-center justify-center text-slate-400 dark:text-zinc-500 gap-2">
+        <div className="py-24 flex flex-col items-center justify-center text-fg-3 dark:text-white0 gap-2">
           <Loader2 size={24} className="animate-spin text-indigo-600" />
           <span className="text-xs">Loading shifts...</span>
         </div>
@@ -105,11 +105,11 @@ export default function ShiftPage() {
           <span>{error}</span>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
+        <div className="bg-surface rounded-2xl border border-slate-200 dark:border-line shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/70 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-xs font-semibold">
+                <tr className="bg-slate-50/70 dark:bg-subtle border-b border-slate-200 dark:border-line text-fg-2 text-xs font-semibold">
                   <th className="py-3.5 px-4">Shift Name</th>
                   <th className="py-3.5 px-4">Working Hours</th>
                   <th className="py-3.5 px-4">Shift Duration</th>
@@ -118,10 +118,10 @@ export default function ShiftPage() {
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-zinc-800 text-xs">
+              <tbody className="divide-y divide-slate-200 dark:divide-line text-xs">
                 {(!shifts || shifts.length === 0) ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400 dark:text-zinc-500">
+                    <td colSpan={6} className="py-12 text-center text-fg-3 dark:text-white0">
                       No shifts configured yet. Click "Add Shift" to create the first one.
                     </td>
                   </tr>
@@ -129,10 +129,10 @@ export default function ShiftPage() {
                   shifts.map((shift) => (
                     <tr
                       key={shift.id}
-                      className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors"
+                      className="hover:bg-slate-50/60 dark:hover:bg-zinc-800 transition-colors"
                     >
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-800 dark:text-zinc-100 flex items-center gap-2">
+                        <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                           <span>{shift.name}</span>
                           {shift.isDefault && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
@@ -145,7 +145,7 @@ export default function ShiftPage() {
 
                       <td className="py-3.5 px-4">
                         <div className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-zinc-200">
-                          <Calendar size={13} className="text-slate-400" />
+                          <Calendar size={13} className="text-fg-3" />
                           <span>
                             {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
                           </span>
@@ -153,19 +153,19 @@ export default function ShiftPage() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="font-semibold text-slate-600 dark:text-zinc-300">
+                        <span className="font-semibold text-fg-2">
                           {calculateDuration(shift.startTime, shift.endTime)}
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
                           {shift.graceMinutes} minutes
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600 dark:text-zinc-400">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-fg-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           Active
                         </span>
@@ -176,7 +176,7 @@ export default function ShiftPage() {
                           {hasPermission(Permission.UpdateShift) && (
                             <button
                               onClick={() => setModalState({ open: true, shift })}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-zinc-800 dark:hover:text-indigo-400 transition-colors"
+                              className="p-1.5 rounded-2xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-zinc-800 dark:hover:text-indigo-400 transition-colors"
                               title="Edit Shift"
                             >
                               <Pencil size={14} />
@@ -186,7 +186,7 @@ export default function ShiftPage() {
                             <button
                               onClick={() => setDeletingId(shift.id)}
                               disabled={shift.isDefault}
-                              className={`p-1.5 rounded-lg text-slate-500 transition-colors ${
+                              className={`p-1.5 rounded-2xl text-slate-500 transition-colors ${
                                 shift.isDefault
                                   ? "opacity-30 cursor-not-allowed"
                                   : "hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"

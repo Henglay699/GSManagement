@@ -39,6 +39,11 @@ namespace GSManagement.Domain.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<int>("EarlyLeaveMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("HalfDayPeriod")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -48,14 +53,25 @@ namespace GSManagement.Domain.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<int>("LateMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int?>("LeaveRequestId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("MissedClockOut")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<double?>("OvertimeMinutes")
                         .HasColumnType("float");
 
                     b.Property<string>("Remark")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int?>("ShiftId")
                         .HasColumnType("int");
@@ -74,7 +90,8 @@ namespace GSManagement.Domain.Migrations
 
                     b.HasIndex("ShiftId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
 
                     b.ToTable("Attendances");
                 });
@@ -194,32 +211,6 @@ namespace GSManagement.Domain.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("LeaveRequests");
-                });
-
-            modelBuilder.Entity("GSManagement.Domain.Entities.OvertimeRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttendanceId")
-                        .HasColumnType("int");
-
-                    b.Property<double>("OvertimeMinutes")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttendanceId")
-                        .IsUnique();
-
-                    b.ToTable("OvertimeRecords");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.Permission", b =>
@@ -478,17 +469,6 @@ namespace GSManagement.Domain.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("GSManagement.Domain.Entities.OvertimeRecord", b =>
-                {
-                    b.HasOne("GSManagement.Domain.Entities.Attendance", "Attendance")
-                        .WithOne("OvertimeRecord")
-                        .HasForeignKey("GSManagement.Domain.Entities.OvertimeRecord", "AttendanceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Attendance");
-                });
-
             modelBuilder.Entity("GSManagement.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("GSManagement.Domain.Entities.User", "User")
@@ -498,11 +478,6 @@ namespace GSManagement.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("GSManagement.Domain.Entities.Attendance", b =>
-                {
-                    b.Navigation("OvertimeRecord");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.User", b =>

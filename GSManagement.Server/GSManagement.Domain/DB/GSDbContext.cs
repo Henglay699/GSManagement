@@ -18,7 +18,6 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Shift> Shifts => Set<Shift>();
-    public DbSet<OvertimeRecord> OvertimeRecords => Set<OvertimeRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,7 +28,6 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
         modelBuilder.ApplyConfiguration(new AttendanceConfig());
         modelBuilder.ApplyConfiguration(new LeaveRequestConfig());
         modelBuilder.ApplyConfiguration(new ShiftConfig());
-        modelBuilder.ApplyConfiguration(new OvertimeRecordConfig());
 
         base.OnModelCreating(modelBuilder);
     }

@@ -1,17 +1,19 @@
 import { Link } from "react-router-dom";
-import { Compass } from "lucide-react";
+import {
+  Compass,
+} from "lucide-react";
 import { paths } from "../lib/paths";
 
 export default function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 dark:text-zinc-500">
+      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-subtle flex items-center justify-center text-fg-3 dark:text-white0">
         <Compass size={22} />
       </div>
-      <h1 className="text-base font-bold text-slate-800 dark:text-zinc-100">
+      <h1 className="text-base font-bold text-slate-800 dark:text-white">
         Page not found
       </h1>
-      <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-xs">
+      <p className="text-xs text-fg-2 max-w-xs">
         This page doesn't exist yet, or the link is out of date.
       </p>
       <Link

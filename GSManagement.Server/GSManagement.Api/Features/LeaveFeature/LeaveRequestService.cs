@@ -1,3 +1,4 @@
+using GSManagement.Api.Features.AttendanceFeature;
 using GSManagement.Api.Features.LeaveFeature.DTOs;
 using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.DB;
@@ -88,7 +89,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         }
 
         entity.User = employee;
-        return Map(entity);
+        return await MapSavedAsync(entity);
     }
 
     public async Task<PagedResult<LeaveRequestDto>> GetAllAsync(LeaveRequestFilterDto filter)
@@ -190,11 +191,11 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         }
         else if (dto.Status == LeaveStatus.Reject)
         {
-            await _context.Attendances.Where(a => a.LeaveRequestId == id).ExecuteDeleteAsync();
+            await ReleaseAttendanceForLeaveAsync(id);
         }
 
         await _context.SaveChangesAsync();
-        return Map(entity);
+        return await MapSavedAsync(entity);
     }
 
     public async Task<LeaveRequestDto> CancelOwnAsync(int id, int userId)
@@ -210,7 +211,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
         entity.Status = LeaveStatus.Cancel;
         await _context.SaveChangesAsync();
-        return Map(entity);
+        return await MapSavedAsync(entity);
     }
 
     public async Task<LeaveRequestDto> UpdateAsync(int id, UpdateLeaveRequestDto dto, int actionedByUserId)
@@ -274,9 +275,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             throw new InvalidOperationException("This date range only covers Sunday, which is already a day off - no leave request is needed.");
 
         // 1. Remove all existing attendance records synced to this leave request ID
-        await _context.Attendances
-            .Where(a => a.LeaveRequestId == id)
-            .ExecuteDeleteAsync();
+        await ReleaseAttendanceForLeaveAsync(id);
 
         // 2. Update entity properties
         entity.UserId = dto.UserId;
@@ -297,7 +296,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         }
 
         await _context.SaveChangesAsync();
-        return Map(entity);
+        return await MapSavedAsync(entity);
     }
 
     private async Task ValidateNoConflictingAttendanceAsync(
@@ -321,7 +320,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         {
             // For full-day leave: employee cannot take leave if they already clocked in or worked on that day
             var attended = existingAttendances
-                .Where(a => a.CheckInTime != null || a.Status == AttendanceStatus.OnTime || a.Status == AttendanceStatus.Late)
+                .Where(a => a.CheckInTime != null || a.Status == AttendanceStatus.Present || a.Status == AttendanceStatus.Late)
                 .Select(a => a.Date.ToString("yyyy-MM-dd"))
                 .ToList();
 
@@ -362,36 +361,55 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .ToListAsync();
 
         var existingByDate = existing.ToDictionary(a => a.Date);
+        var defaultShift = await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault);
 
         for (var date = leaveRequest.StartDate; date <= leaveRequest.EndDate; date = date.AddDays(1))
         {
             if (date.DayOfWeek == DayOfWeek.Sunday || holidayDate.Contains(date)) continue;
 
-            if (existingByDate.TryGetValue(date, out var attendance))
+            if (!existingByDate.TryGetValue(date, out var attendance))
             {
-                attendance.Status = leaveRequest.IsHalfDay ? AttendanceStatus.HalfDayLeave : AttendanceStatus.Leave;
-                attendance.LeaveRequestId = leaveRequest.Id;
-                attendance.IsHalfDay = leaveRequest.IsHalfDay;
-                attendance.HalfDayPeriod = leaveRequest.HalfDayPeriod;
-                if (!leaveRequest.IsHalfDay)
-                {
-                    attendance.CheckInTime = null;
-                    attendance.CheckOutTime = null;
-                }
+                attendance = new Attendance { UserId = leaveRequest.UserId, Date = date };
+                _context.Attendances.Add(attendance);
             }
-            else
-            {
-                _context.Attendances.Add(new Attendance
-                {
-                    UserId = leaveRequest.UserId,
-                    Date = date,
-                    Status = leaveRequest.IsHalfDay ? AttendanceStatus.HalfDayLeave : AttendanceStatus.Leave,
-                    LeaveRequestId = leaveRequest.Id,
-                    IsHalfDay = leaveRequest.IsHalfDay,
-                    HalfDayPeriod = leaveRequest.HalfDayPeriod
-                });
-            }
+
+            attendance.Status = leaveRequest.IsHalfDay ? AttendanceStatus.HalfDay : AttendanceStatus.OnLeave;
+            attendance.LeaveRequestId = leaveRequest.Id;
+            attendance.IsHalfDay = leaveRequest.IsHalfDay;
+            attendance.HalfDayPeriod = leaveRequest.HalfDayPeriod;
+            attendance.ShiftId ??= defaultShift?.Id;
+            // Half-day keeps any clock times and is re-scored against the shorter window.
+            AttendanceRules.Apply(attendance, defaultShift);
         }
+    }
+
+    /// <summary>
+    /// Undoes a leave's effect on attendance: days the employee also worked
+    /// (half-day with a clock-in) go back to normal worked days; the rest are removed.
+    /// </summary>
+    private async Task ReleaseAttendanceForLeaveAsync(int leaveRequestId)
+    {
+        var records = await _context.Attendances
+            .Include(a => a.Shift)
+            .Where(a => a.LeaveRequestId == leaveRequestId)
+            .ToListAsync();
+        if (records.Count == 0) return;
+
+        var defaultShift = await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault);
+        foreach (var a in records)
+        {
+            if (a.CheckInTime is null)
+            {
+                _context.Attendances.Remove(a);
+                continue;
+            }
+            a.LeaveRequestId = null;
+            a.IsHalfDay = false;
+            a.HalfDayPeriod = null;
+            a.Status = AttendanceStatus.Present;
+            AttendanceRules.Apply(a, a.Shift ?? defaultShift);
+        }
+        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
@@ -399,9 +417,28 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         var entity = await _context.LeaveRequests.FindAsync(id)
             ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
 
-        await _context.Attendances.Where(a => a.LeaveRequestId == id).ExecuteDeleteAsync();
+        await ReleaseAttendanceForLeaveAsync(id);
         _context.LeaveRequests.Remove(entity);
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// After a write: make sure the employee and the (possibly new) approver are
+    /// loaded, so the response matches what a fresh read of the request returns.
+    /// </summary>
+    private async Task<LeaveRequestDto> MapSavedAsync(LeaveRequest entity)
+    {
+        var entry = _context.Entry(entity);
+        if (!entry.Reference(e => e.User).IsLoaded)
+            await entry.Reference(e => e.User).LoadAsync();
+
+        var approver = entry.Reference(e => e.Approver);
+        if (entity.ApproverId is not null && approver.CurrentValue?.Id != entity.ApproverId)
+        {
+            approver.IsLoaded = false;
+            await approver.LoadAsync();
+        }
+        return Map(entity);
     }
 
     private static LeaveRequestDto Map(LeaveRequest entity) => new()

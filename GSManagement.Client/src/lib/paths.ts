@@ -9,8 +9,8 @@ export const paths = {
   dashboard: "/dashboard",
 
   // Self-service pages every employee gets, no permission needed.
+  myToday: "/me/today",
   myAttendance: "/me/attendance",
-  myAttendanceHistory: "/me/attendance/history",
   myLeaves: "/me/leaves",
 
   users: "/users",
@@ -26,12 +26,13 @@ export const paths = {
   permissions: "/permissions",
   permissionDetail: (id: Id) => `/permissions/${id}`,
 
+  // HR: daily board, and one employee's month (month = "YYYY-MM").
   attendance: "/attendance",
-  attendanceCreate: "/attendance/new",
-  userAttendance: (id: Id, date?: string) =>
-    date ? `/attendance/users/${id}?date=${date}` : `/attendance/users/${id}`,
+  userAttendance: (id: Id, month?: string) =>
+    month ? `/attendance/employees/${id}?month=${month}` : `/attendance/employees/${id}`,
 
   shifts: "/shifts",
+  monthlyReport: "/reports/monthly",
 
   leaveRequests: "/leaves/requests",
   leaveHistory: "/leaves/history",

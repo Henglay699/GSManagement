@@ -17,33 +17,34 @@ public class Attendance
         ? (CheckOutTime.Value - CheckInTime.Value).TotalHours : null;
 
     public AttendanceStatus Status { get; set; }
-    public string? Remark { get; set; }
-    public int? LeaveRequestId { get; set; }
 
-    /// <summary>
-    /// Which shift this attendance record is linked to.
-    /// Null means the default shift was in effect.
-    /// </summary>
-    public int? ShiftId { get; set; }
+    /// <summary>Minutes after the expected start, when the arrival was late.</summary>
+    public int LateMinutes { get; set; }
 
-    /// <summary>
-    /// Minutes of overtime worked beyond the shift's expected duration.
-    /// Calculated automatically on clock-out.
-    /// </summary>
+    /// <summary>Minutes before the expected end, when the employee left early.</summary>
+    public int EarlyLeaveMinutes { get; set; }
+
+    /// <summary>Minutes worked after the shift end.</summary>
     public double? OvertimeMinutes { get; set; }
 
-    /// <summary>
-    /// True when this record represents a half-day (e.g. half-day leave).
-    /// </summary>
+    /// <summary>Clocked in but never clocked out; set by the nightly close-out job.</summary>
+    public bool MissedClockOut { get; set; }
+
+    /// <summary>A note written by a person (HR or the system for leave), not a status.</summary>
+    public string? Remark { get; set; }
+
+    public int? LeaveRequestId { get; set; }
+
+    /// <summary>The shift in effect that day. Null means the default shift.</summary>
+    public int? ShiftId { get; set; }
+
+    /// <summary>True when the record covers half-day leave.</summary>
     public bool IsHalfDay { get; set; }
 
-    /// <summary>
-    /// If IsHalfDay is true, indicates which half of the day is off/worked.
-    /// </summary>
+    /// <summary>Which half is on leave, when IsHalfDay is true.</summary>
     public HalfDayPeriod? HalfDayPeriod { get; set; }
 
     public User? User { get; set; }
     public LeaveRequest? LeaveRequest { get; set; }
     public Shift? Shift { get; set; }
-    public OvertimeRecord? OvertimeRecord { get; set; }
 }

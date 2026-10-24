@@ -135,6 +135,12 @@ public class RoleService(GSDbContext context, UserAccessCache accessCache) : IRo
             return Result<RoleResponse>.Fail("Role name is already used by another role.", ErrorType.Conflict);
         }
 
+        // The admin protections work by name, so the admin role keeps it.
+        if (role.RoleName == Role.AdminRoleName && request.RoleName != Role.AdminRoleName)
+        {
+            return Result<RoleResponse>.Fail("The system admin role can't be renamed.", ErrorType.Conflict);
+        }
+
         var permissionIds = request.PermissionIds?.Distinct().ToList() ?? [];
         List<Permission> newPermissions = [];
 
@@ -176,6 +182,10 @@ public class RoleService(GSDbContext context, UserAccessCache accessCache) : IRo
         if (role == null)
         {
             return Result<bool>.Fail("Role not found", ErrorType.NotFound);
+        }
+        if (role.RoleName == Role.AdminRoleName)
+        {
+            return Result<bool>.Fail("The system admin role can't be deleted.", ErrorType.Conflict);
         }
 
         // Read before deleting: the role's user links are removed with it.

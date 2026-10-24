@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+} from "lucide-react";
 import UserForm from "../../components/user/UserForm";
 import { useAsync } from "../../hooks/useAsync";
 import {
@@ -42,7 +44,7 @@ function UpdateUserPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-zinc-400">
+      <div className="flex flex-col items-center justify-center py-20 text-fg-2">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-2" />
         <span className="text-sm">Loading user details...</span>
       </div>

@@ -1,26 +1,32 @@
-using JwtTest.Middlewares.CheckPermission;
 using GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
-using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.Entities.Enums;
+using JwtTest.Middlewares.CheckPermission;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GSManagement.Api.Features.AttendanceFeature.Admin;
 
+// HR side of attendance. Per-employee months and the monthly report live in
+// ReportController; employees' own clock-in is in Employee/AttendancesController.
+[Authorize]
 [ApiController]
 [Route("api/admin/attendances")]
 public class AttendanceController(IAttendanceService attendanceService) : ControllerBase
 {
     private readonly IAttendanceService _attendanceService = attendanceService;
 
-    [HttpGet("grid")]
+    [HttpGet("daily")]
     [HasPermission(AppPermission.ViewAttendance)]
-    public async Task<ActionResult<AttendanceGridResponseDto>> GetGrid(
-        [FromQuery] DateOnly? date,
-        [FromQuery] AttendanceStatus? status)
+    public async Task<ActionResult<DailyAttendanceDto>> GetDaily([FromQuery] DateOnly? date)
     {
-        DateOnly queryDate = date ?? DateOnly.FromDateTime(DateTime.Today);
-        var result = await _attendanceService.GetWeeklyAttendanceGridAsync(queryDate, status);
-        return Ok(result);
+        return Ok(await _attendanceService.GetDailyAsync(date ?? DateOnly.FromDateTime(DateTime.Today)));
+    }
+
+    [HttpGet("weekly")]
+    [HasPermission(AppPermission.ViewAttendance)]
+    public async Task<ActionResult<WeeklyAttendanceDto>> GetWeekly([FromQuery] DateOnly? date)
+    {
+        return Ok(await _attendanceService.GetWeeklyAsync(date ?? DateOnly.FromDateTime(DateTime.Today)));
     }
 
     [HttpGet("{id:int}")]
@@ -31,20 +37,20 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
         return result is null ? NotFound() : Ok(result);
     }
 
-    [HttpPost]
+    [HttpPost]
     [HasPermission(AppPermission.CreateAttendance)]
-    public async Task<ActionResult<AttendanceRecordDto>> Create([FromBody] CreateAttendanceDto dto)
+    public async Task<ActionResult<AttendanceRecordDto>> Create([FromBody] SaveAttendanceDto dto)
     {
         try
         {
             var result = await _attendanceService.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
-        catch (InvalidOperationException ex)
+        catch (KeyNotFoundException ex)
         {
-            return Conflict(new { message = ex.Message });
+            return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
@@ -52,36 +58,30 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
 
     [HttpPut("{id:int}")]
     [HasPermission(AppPermission.UpdateAttendance)]
-    public async Task<ActionResult<AttendanceRecordDto>> Update(int id, [FromBody] CreateAttendanceDto dto)
+    public async Task<ActionResult<AttendanceRecordDto>> Update(int id, [FromBody] SaveAttendanceDto dto)
     {
         try
         {
             var result = await _attendanceService.UpdateAsync(id, dto);
             return result is null ? NotFound(new { message = $"Attendance record {id} not found." }) : Ok(result);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
     }
 
-    // GET /api/attendance/user/5?month=2026-09
-    // Powers UserAttendanceDetailPage.tsx: user profile + full-month summary
-    // + day-by-day check-in/check-out records.
-    [HttpGet("user/{id:int}")]
-    [HasPermission(AppPermission.ViewAttendance)]
-    public async Task<ActionResult<UserAttendanceDetailDto>> GetUserAttendanceDetail(int id, [FromQuery] string month)
+    [HttpDelete("{id:int}")]
+    [HasPermission(AppPermission.DeleteAttendance)]
+    public async Task<IActionResult> Delete(int id)
     {
-        if (!DateParser.TryParseMonth(month, out var year, out var monthNumber))
+        try
         {
-            return BadRequest(new { message = "Query parameter 'month' must be in 'yyyy-MM' format." });
+            return await _attendanceService.DeleteAsync(id) ? NoContent() : NotFound();
         }
-
-        var result = await _attendanceService.GetUserAttendanceDetailAsync(id, year, monthNumber);
-
-        return result is null
-            ? NotFound(new { message = $"User with id {id} was not found." })
-            : Ok(result);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
-
 }

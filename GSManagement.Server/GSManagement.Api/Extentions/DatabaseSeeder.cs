@@ -41,7 +41,7 @@ public static class DatabaseSeeder
             // Grant newly created permissions to Admin role if Admin already exists
             var adminRole = await context.Roles
                 .Include(r => r.Permissions)
-                .FirstOrDefaultAsync(r => r.RoleName == "Admin");
+                .FirstOrDefaultAsync(r => r.RoleName == Role.AdminRoleName);
 
             if (adminRole != null)
             {
@@ -64,7 +64,7 @@ public static class DatabaseSeeder
                 .ToList();
 
             await context.Roles.AddRangeAsync(
-                new Role { RoleName = "Admin", Permissions = permissions, CreatedAt = DateTime.Now }, // Admin gets all permissions
+                new Role { RoleName = Role.AdminRoleName, Permissions = permissions, CreatedAt = DateTime.Now }, // Admin gets all permissions
                 new Role { RoleName = "HR", Permissions = userModulePermissions, CreatedAt = DateTime.Now },
                 new Role { RoleName = "Operation", CreatedAt = DateTime.Now },
                 new Role { RoleName = "Accountant", CreatedAt = DateTime.Now }
@@ -101,7 +101,7 @@ public static class DatabaseSeeder
         // 3. Seed Users
         if (!await context.Users.AnyAsync())
         {
-            var adminRole = await context.Roles.FirstAsync(r => r.RoleName == "Admin");
+            var adminRole = await context.Roles.FirstAsync(r => r.RoleName == Role.AdminRoleName);
             var hrRole = await context.Roles.FirstAsync(r => r.RoleName == "HR");
             var operationRole = await context.Roles.FirstAsync(r => r.RoleName == "Operation");
             var accountantRole = await context.Roles.FirstAsync(r => r.RoleName == "Accountant");
@@ -161,7 +161,7 @@ public static class DatabaseSeeder
                     UserId = chhunleang.Id,
                     Date = DateOnly.FromDateTime(DateTime.Now),
                     CheckInTime = new TimeOnly(8, 0),
-                    Status = AttendanceStatus.OnTime,
+                    Status = AttendanceStatus.Present,
                     Remark = "Late"
                 },
                 new Attendance
@@ -170,14 +170,14 @@ public static class DatabaseSeeder
                     Date = DateOnly.FromDateTime(DateTime.Now),
                     CheckInTime = new TimeOnly(8, 0),
                     CheckOutTime = new TimeOnly(16, 0),
-                    Status = AttendanceStatus.OnTime,
+                    Status = AttendanceStatus.Present,
                     Remark = "Arrived On Time"
                 },
                 new Attendance
                 {
                     UserId = thnin.Id,
                     Date = DateOnly.FromDateTime(DateTime.Now),
-                    Status = AttendanceStatus.Leave,
+                    Status = AttendanceStatus.OnLeave,
                     Remark = "On Leave"
                 },
                 new Attendance

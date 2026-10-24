@@ -95,9 +95,9 @@ function UserPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-3 p-2">
-      <div className="border-b border-slate-200 dark:border-zinc-800 pb-2">
-        <div className="flex items-center gap-6 text-xs font-semibold text-slate-500 dark:text-zinc-400 overflow-x-auto">
-          <h1 className="text-slate-900 dark:text-zinc-100 border-b-2 text-[22px] border-slate-900 dark:border-zinc-100 pb-1 flex items-center gap-1.5">
+      <div className="border-b border-slate-200 dark:border-line pb-2">
+        <div className="flex items-center gap-6 text-xs font-semibold text-fg-2 overflow-x-auto">
+          <h1 className="text-fg border-b-2 text-[22px] border-slate-900 dark:border-white pb-1 flex items-center gap-1.5">
             Total Users{" "}
             <span className="bg-slate-900 dark:bg-zinc-700 text-white text-[11px] px-1.5 rounded-full">
               {totalCount}
@@ -106,18 +106,18 @@ function UserPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border border-slate-200 dark:border-line overflow-hidden">
         {/* Toolbar */}
-        <div className="p-2.5 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-wrap items-center justify-between gap-2">
+        <div className="p-2.5 border-b border-line bg-surface flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap flex-1">
             <div className="relative w-86">
               <Search
                 size={14}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-3 dark:text-white0"
               />
               <input
                 type="text"
-                className="w-full pl-8 pr-9 py-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                className="w-full pl-8 pr-9 py-1 bg-slate-50 dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-2xl text-xs text-fg focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
                 placeholder="Search username or email..."
                 value={searchTerm}
                 onChange={(e) => {
@@ -130,14 +130,14 @@ function UserPage() {
             <div className="relative flex items-center">
               <Filter
                 size={13}
-                className="absolute left-2.5 text-slate-400 dark:text-zinc-500 pointer-events-none"
+                className="absolute left-2.5 text-fg-3 dark:text-white0 pointer-events-none"
               />
               <select
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(e.target.value as StatusFilter)
                 }
-                className="pl-7 pr-6 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer appearance-none"
+                className="pl-7 pr-6 py-1 bg-white dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-2xl text-xs font-medium text-fg-2 hover:bg-slate-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer appearance-none"
               >
                 <option value="all">Status: All</option>
                 <option value="active">Status: Active</option>
@@ -150,7 +150,7 @@ function UserPage() {
             {hasPermission(Permission.CreateUser) && (
               <Link
                 to={paths.userCreate}
-                className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white font-medium text-xs rounded-lg transition-all shadow-xs"
+                className="inline-flex items-center justify-center gap-1 px-3 py-1 bg-sky-500 hover:bg-sky-600 text-white font-medium text-xs rounded-2xl transition-all shadow-xs"
               >
                 <Plus size={14} />
                 <span>Add staff</span>
@@ -160,7 +160,7 @@ function UserPage() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-zinc-400">
+          <div className="flex flex-col items-center justify-center py-12 text-fg-2">
             <Loader2 className="w-6 h-6 animate-spin text-sky-500 mb-2" />
             <span className="text-xs">Loading staff...</span>
           </div>
@@ -169,25 +169,25 @@ function UserPage() {
             {error}
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-400 dark:text-zinc-500">
+          <div className="py-12 text-center text-xs text-fg-3 dark:text-white0">
             No users match the current filter.
           </div>
         ) : (
           <>
             <UserTable users={filteredUsers} onDelete={setUserToDelete} />
 
-            <div className="px-4 py-2 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
-              <span className="text-[11px] text-slate-500 dark:text-zinc-400">
+            <div className="px-4 py-2 border-t border-line bg-surface flex items-center justify-between">
+              <span className="text-[11px] text-fg-2">
                 Showing{" "}
-                <span className="font-semibold text-slate-700 dark:text-zinc-300">
+                <span className="font-semibold text-fg-2">
                   {startIndex + 1}
                 </span>{" "}
                 to{" "}
-                <span className="font-semibold text-slate-700 dark:text-zinc-300">
+                <span className="font-semibold text-fg-2">
                   {Math.min(startIndex + ITEMS_PER_PAGE, totalCount)}
                 </span>{" "}
                 of{" "}
-                <span className="font-semibold text-slate-700 dark:text-zinc-300">
+                <span className="font-semibold text-fg-2">
                   {totalCount}
                 </span>{" "}
                 staff
@@ -199,12 +199,12 @@ function UserPage() {
                     setCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
                   disabled={currentPage === 1}
-                  className="p-1 rounded-md border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded-xl border border-slate-200 dark:border-line-strong bg-white dark:bg-subtle text-fg-2 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft size={14} />
                 </button>
 
-                <span className="text-xs text-slate-600 dark:text-zinc-300 font-medium px-1">
+                <span className="text-xs text-fg-2 font-medium px-1">
                   Page {currentPage} of {totalPages}
                 </span>
 
@@ -213,7 +213,7 @@ function UserPage() {
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
                   disabled={currentPage >= totalPages}
-                  className="p-1 rounded-md border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-1 rounded-xl border border-slate-200 dark:border-line-strong bg-white dark:bg-subtle text-fg-2 hover:bg-slate-50 dark:hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -229,7 +229,7 @@ function UserPage() {
           message={
             <>
               Are you sure you want to delete{" "}
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+              <span className="font-semibold text-fg">
                 {userToDelete.userName}
               </span>
               ?

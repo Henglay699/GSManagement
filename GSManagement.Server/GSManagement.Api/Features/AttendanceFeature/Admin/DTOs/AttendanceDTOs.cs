@@ -1,59 +1,61 @@
+using GSManagement.Api.Features.AttendanceFeature.Summary;
 using GSManagement.Domain.Entities.Enums;
 
 namespace GSManagement.Api.Features.AttendanceFeature.Admin.DTOs;
 
-public class AttendanceGridResponseDto
-{
-    public List<WeekDayInfoDto> WeekDates { get; set; } = new();
-    public List<EmployeeAttendanceDto> Employees { get; set; } = new();
-}
+/// <summary>GET /api/admin/attendances/daily: every active employee for one date.</summary>
+public record DailyAttendanceDto(
+    DateOnly Date,
+    string? HolidayName,
+    bool IsDayOff,
+    Dictionary<DayStatus, int> Counts,
+    List<DailyAttendanceRowDto> Rows
+);
 
-public class WeekDayInfoDto
-{
-    public string DayName { get; set; } = string.Empty;
-    public int DayNumber { get; set; }
-    public DateOnly Date { get; set; }
-    public bool IsHoliday { get; set; }
-    public string? HolidayName { get; set; }
-}
+public record DailyAttendanceRowDto(SummaryEmployeeDto Employee, SummaryDayDto Day);
 
-public class EmployeeAttendanceDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    public string? Avatar { get; set; }
-    public List<AttendanceRecordDto> Attendance { get; set; } = new();
-}
+/// <summary>GET /api/admin/attendances/weekly: every active employee, Monday to Sunday.</summary>
+public record WeeklyAttendanceDto(
+    DateOnly WeekStart,
+    DateOnly WeekEnd,
+    List<WeekDayDto> Days,
+    List<WeeklyAttendanceRowDto> Rows
+);
 
-public class AttendanceRecordDto
-{
-    public int Id { get; set; }
-    public int UserId { get; set; }
-    public DateOnly Date { get; set; }
-    public TimeOnly? CheckInTime { get; set; }
-    public TimeOnly? CheckOutTime { get; set; }
-    public string? TotalHour { get; set; }
-    public double? OvertimeMinutes { get; set; }
-    public bool IsHalfDay { get; set; }
-    public HalfDayPeriod? HalfDayPeriod { get; set; }
-    public int? ShiftId { get; set; }
-    public string? ShiftName { get; set; }
-    public AttendanceStatus Status { get; set; }
-    public string? Remark { get; set; }
-}
+public record WeekDayDto(DateOnly Date, string? HolidayName, bool IsDayOff);
 
-public class CreateAttendanceDto
+/// <summary>One employee's seven days, in the same order as WeeklyAttendanceDto.Days.</summary>
+public record WeeklyAttendanceRowDto(SummaryEmployeeDto Employee, List<SummaryDayDto> Days);
+
+/// <summary>
+/// HR creates or corrects a record. The status is worked out from the times
+/// (on time / late); set MarkAbsent for a working day the employee missed.
+/// Leave days are managed through leave requests, not here.
+/// </summary>
+public class SaveAttendanceDto
 {
     public int UserId { get; set; }
     public DateOnly Date { get; set; }
     public TimeOnly? CheckInTime { get; set; }
     public TimeOnly? CheckOutTime { get; set; }
-    public AttendanceStatus Status { get; set; }
+    public bool MarkAbsent { get; set; }
     public string? Remark { get; set; }
-    public int? LeaveRequestId { get; set; }
     public int? ShiftId { get; set; }
-    public double? OvertimeMinutes { get; set; }
-    public bool IsHalfDay { get; set; }
-    public HalfDayPeriod? HalfDayPeriod { get; set; }
 }
+
+public record AttendanceRecordDto(
+    int Id,
+    int UserId,
+    DateOnly Date,
+    TimeOnly? CheckInTime,
+    TimeOnly? CheckOutTime,
+    AttendanceStatus Status,
+    int LateMinutes,
+    int EarlyLeaveMinutes,
+    double? OvertimeMinutes,
+    bool MissedClockOut,
+    bool IsHalfDay,
+    HalfDayPeriod? HalfDayPeriod,
+    int? ShiftId,
+    string? Remark
+);

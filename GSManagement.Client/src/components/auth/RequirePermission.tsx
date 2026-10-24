@@ -1,4 +1,6 @@
-import { ShieldOff } from "lucide-react";
+import {
+  ShieldOff,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import type { Permission } from "../../lib/permissions";
 
@@ -21,11 +23,11 @@ function RequirePermission({
 export function NoAccess() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <ShieldOff className="w-10 h-10 text-slate-400 dark:text-zinc-500 mb-3" />
-      <h1 className="text-lg font-bold text-slate-800 dark:text-zinc-100">
+      <ShieldOff className="w-10 h-10 text-fg-3 dark:text-white0 mb-3" />
+      <h1 className="text-lg font-bold text-slate-800 dark:text-white">
         No access
       </h1>
-      <p className="text-sm text-slate-500 dark:text-zinc-400">
+      <p className="text-sm text-fg-2">
         You don't have permission to view this page. Ask an administrator if
         you need access.
       </p>

@@ -1,162 +1,137 @@
-﻿import type { ShiftDto } from "./shift";
+import type { ShiftDto } from "./shift";
+import type { HalfDayPeriod, LeaveType } from "./leave";
 
-export type AttendanceStatus =
-  | "OnTime"
+export type { HalfDayPeriod };
+
+/** What a stored record says about a day (AttendanceStatus on the server). */
+export type AttendanceStatus = "Present" | "Late" | "HalfDay" | "OnLeave" | "Absent";
+
+/**
+ * What a calendar day shows: exactly one per day. The first five come from
+ * stored records, the rest from the calendar (DayStatus on the server).
+ */
+export type DayStatus =
+  | "Present"
   | "Late"
-  | "Leave"
+  | "HalfDay"
+  | "OnLeave"
   | "Absent"
-  | "HalfDayLeave";
+  | "InProgress"
+  | "NotClockedIn"
+  | "Holiday"
+  | "DayOff"
+  | "Upcoming"
+  | "NoRecord";
 
-export type HalfDayPeriod = "Morning" | "Afternoon";
-
-// "Leave" and "HalfDayLeave" are set by approved leave requests, never entered by hand.
-export type ManualAttendanceStatus = Exclude<
-  AttendanceStatus,
-  "Leave" | "HalfDayLeave"
->;
-
-export interface AttendanceRecord {
+export interface SummaryEmployee {
   id: number;
-  userId: number;
+  userName: string;
+  email: string;
+  imageUrl: string | null;
+  roles: string;
+}
+
+export interface SummaryDay {
   date: string; // "YYYY-MM-DD"
-  checkInTime?: string; // e.g. "08:12 AM" or "08:12:00"
-  checkOutTime?: string;
-  totalHour?: number | string;
-  overtimeMinutes?: number | null;
-  isHalfDay?: boolean;
-  halfDayPeriod?: HalfDayPeriod | null;
-  shiftId?: number | null;
-  shiftName?: string | null;
-  status: AttendanceStatus;
-  remark?: string;
+  status: DayStatus;
+  attendanceId: number | null;
+  holidayName: string | null;
+  checkInTime: string | null; // "HH:mm:ss"
+  checkOutTime: string | null;
+  workedMinutes: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
+  overtimeMinutes: number;
+  missedClockOut: boolean;
+  leaveType: LeaveType | null;
+  halfDayPeriod: HalfDayPeriod | null;
+  shiftName: string | null;
+  remark: string | null;
+  // "HH:mm:ss": when work was expected that day; null on days off, holidays and leave.
+  expectedStart: string | null;
+  expectedEnd: string | null;
 }
 
-// ---- GET /api/admin/attendances/grid ----
+export interface SummaryTotals {
+  workingDays: number;
+  presentDays: number;
+  onTimeDays: number;
+  lateDays: number;
+  lateMinutes: number;
+  absentDays: number;
+  leaveDays: number;
+  halfDays: number;
+  earlyLeaveDays: number;
+  missedClockOuts: number;
+  workedHours: number;
+  overtimeHours: number;
+  averageHoursPerDay: number;
+  attendanceRate: number;
+  punctualityRate: number;
+  leaveByType: Record<LeaveType, number>;
+}
 
-export interface WeekDay {
-  dayName: string;
-  dayNumber: number;
+/** GET /employee/attendance/summary and /reports/employees/{id} */
+export interface MonthSummary {
+  year: number;
+  month: number;
+  periodEnd: string;
+  employee: SummaryEmployee;
+  totals: SummaryTotals;
+  days: SummaryDay[];
+}
+
+/** GET /admin/attendances/daily */
+export interface DailyAttendance {
   date: string;
-  isHoliday?: boolean;
-  holidayName?: string;
+  holidayName: string | null;
+  isDayOff: boolean;
+  counts: Record<DayStatus, number>;
+  rows: { employee: SummaryEmployee; day: SummaryDay }[];
 }
 
-export interface EmployeeAttendance {
-  id: number;
-  name: string;
-  role: string;
-  avatar?: string;
-  attendance: AttendanceRecord[];
+/** GET /admin/attendances/weekly: Monday to Sunday. */
+export interface WeeklyAttendance {
+  weekStart: string;
+  weekEnd: string;
+  days: { date: string; holidayName: string | null; isDayOff: boolean }[];
+  // Each row's days are in the same order as `days`.
+  rows: { employee: SummaryEmployee; days: SummaryDay[] }[];
 }
 
-export interface AttendanceGrid {
-  weekDates: WeekDay[];
-  employees: EmployeeAttendance[];
-}
-
-// ---- GET /api/admin/attendances/user/{id} ----
-
-export interface DayAttendanceRecord
-  extends Omit<AttendanceRecord, "id" | "userId"> {
-  id?: number;
-  leaveRequestId?: number;
-}
-
-export interface MonthlyAttendanceSummary {
-  present: number;
-  late: number;
-  absent: number;
-  leave: number;
-  halfDayLeave?: number;
-  totalOvertimeHours?: number;
-}
-
-export interface Holiday {
-  date: string;
-  name: string;
-}
-
-export interface UserAttendanceDetail {
-  user: {
-    id: number;
-    userName: string;
-    email: string;
-    department?: string;
-    avatarUrl?: string;
-  };
-  summary: MonthlyAttendanceSummary;
-  records: DayAttendanceRecord[];
-  holidays: Holiday[];
-}
-
-// ---- POST / PUT /api/admin/attendances ----
-
-export interface AttendancePayload {
+/** POST / PUT /admin/attendances. The status is worked out from the times. */
+export interface SaveAttendancePayload {
   userId: number;
   date: string;
   checkInTime: string | null; // "HH:mm"
   checkOutTime: string | null;
-  status: ManualAttendanceStatus;
+  markAbsent: boolean;
   remark: string | null;
-  shiftId?: number | null;
-  overtimeMinutes?: number | null;
-  isHalfDay?: boolean;
-  halfDayPeriod?: HalfDayPeriod | null;
 }
 
-// ---- Employee Clock-In / Clock-Out ----
-
-export interface ClockResultDto {
-  id: number;
+/** GET /employee/attendance/today */
+export interface EmployeeToday {
   date: string;
-  checkInTime?: string | null;
-  checkOutTime?: string | null;
-  totalHours?: number | null;
-  overtimeMinutes?: number | null;
-  status: AttendanceStatus;
-  remark?: string | null;
-  shiftName?: string | null;
+  status: DayStatus;
+  canClockIn: boolean;
+  canClockOut: boolean;
+  // "HH:mm:ss": clock-in is refused before this time.
+  clockInOpensAt: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  expectedStart: string;
+  expectedEnd: string;
+  graceMinutes: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
+  overtimeMinutes: number;
+  holidayName: string | null;
+  leaveType: LeaveType | null;
+  halfDayPeriod: HalfDayPeriod | null;
+  shift: ShiftDto | null;
+}
+
+export interface ClockResult {
+  today: EmployeeToday;
   message: string;
-}
-
-export interface EmployeeTodayStatus {
-  date: string;
-  isClockedIn: boolean;
-  isClockedOut: boolean;
-  checkInTime?: string | null;
-  checkOutTime?: string | null;
-  totalHours?: number | null;
-  overtimeMinutes?: number | null;
-  status?: AttendanceStatus | null;
-  shift?: ShiftDto | null;
-  isHalfDay: boolean;
-  halfDayPeriod?: HalfDayPeriod | null;
-}
-
-export interface EmployeeAttendanceRecordDto {
-  id: number;
-  date: string;
-  checkInTime?: string | null;
-  checkOutTime?: string | null;
-  totalHours?: number | null;
-  overtimeMinutes?: number | null;
-  status: AttendanceStatus;
-  remark?: string | null;
-  isHalfDay: boolean;
-  halfDayPeriod?: HalfDayPeriod | null;
-  shiftName?: string | null;
-}
-
-export interface EmployeeMonthlySummary {
-  year: number;
-  month: number;
-  totalDaysWorked: number;
-  totalHoursWorked: number;
-  totalOvertimeHours: number;
-  totalOnTime: number;
-  totalLate: number;
-  totalLeave: number;
-  totalAbsent: number;
-  totalHalfDayLeave: number;
-  records: EmployeeAttendanceRecordDto[];
 }

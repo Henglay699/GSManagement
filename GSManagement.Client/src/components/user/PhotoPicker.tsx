@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, ImageUp, Trash2, User as UserIcon } from "lucide-react";
+import {
+  Camera,
+  ImageUp,
+  Trash2,
+  User as UserIcon,
+} from "lucide-react";
 import ZoomablePhoto from "../ui/ZoomablePhoto";
 import type { PhotoChange } from "../../types/user";
 
@@ -126,7 +131,7 @@ export default function PhotoPicker({
       className={`relative flex items-center gap-4 p-3 rounded-xl border-2 border-dashed transition-colors ${
         isDragging
           ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40"
-          : "border-slate-200 dark:border-zinc-700"
+          : "border-slate-200 dark:border-line-strong"
       }`}
     >
       {isDragging && (
@@ -136,11 +141,11 @@ export default function PhotoPicker({
           Drop photo to upload
         </div>
       )}
-      <div className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center">
+      <div className="w-20 h-20 shrink-0 rounded-full overflow-hidden bg-slate-100 dark:bg-subtle border border-slate-200 dark:border-line-strong flex items-center justify-center">
         {previewUrl ? (
           <ZoomablePhoto src={previewUrl} alt="Profile photo" />
         ) : (
-          <UserIcon size={32} className="text-slate-400 dark:text-zinc-500" />
+          <UserIcon size={32} className="text-fg-3 dark:text-white0" />
         )}
       </div>
       <div className="space-y-2">
@@ -148,7 +153,7 @@ export default function PhotoPicker({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 rounded-2xl transition-colors"
           >
             <Camera size={14} />
             {previewUrl ? "Change Photo" : "Upload Photo"}
@@ -157,14 +162,14 @@ export default function PhotoPicker({
             <button
               type="button"
               onClick={handlePhotoRemove}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-2xl transition-colors"
             >
               <Trash2 size={14} />
               Remove
             </button>
           )}
         </div>
-        <p className="text-xs text-slate-400 dark:text-zinc-500">
+        <p className="text-xs text-fg-3 dark:text-white0">
           Or drag & drop a photo here. JPEG, PNG or WebP, up to 5 MB
         </p>
       </div>

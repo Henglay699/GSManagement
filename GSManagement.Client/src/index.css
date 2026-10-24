@@ -1,8 +1,48 @@
 @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
+
+/* Helvetica, bundled from the GS prototype (public/fonts). Kantumruy Pro picks up Khmer text. */
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/helvetica-light-587ebe5a59211.ttf') format('truetype');
+  font-weight: 100 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/Helvetica.ttf') format('truetype');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/Helvetica-Bold.ttf') format('truetype');
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/Helvetica-Oblique.ttf') format('truetype');
+  font-weight: 100 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Helvetica';
+  src: url('/fonts/Helvetica-BoldOblique.ttf') format('truetype');
+  font-weight: 600 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'Helvetica', 'Kantumruy Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
 html,
 body,
@@ -10,6 +50,468 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'Geist', 'Kantumruy Pro';
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: #f8fafc; /* slate-50 */
+}
+.dark body {
   background-color: #0b0c0e;
+}
+
+/* Theme tokens in the app's original colours (slate + indigo, zinc in dark mode).
+   Pages use them as bg-surface, text-fg, border-line, etc. */
+:root {
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f8fafc;
+  --bg-subtle: #f1f5f9;
+  --bg-inset: #f8fafc;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --accent: #4f46e5;
+
+  --status-paid-bg: #ecfdf5;
+  --status-paid-fg: #047857;
+  --status-pending-bg: #fffbeb;
+  --status-pending-fg: #b45309;
+  --status-progress-bg: #f0f9ff;
+  --status-progress-fg: #0369a1;
+  --status-leave-bg: #f5f3ff;
+  --status-leave-fg: #6d28d9;
+  --status-exception-bg: #fff1f2;
+  --status-exception-fg: #be123c;
+  --status-completed-bg: #eef2ff;
+  --status-completed-fg: #4338ca;
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-fg: #64748b;
+}
+.dark {
+  --bg-canvas: #0b0c0e;
+  --bg-surface: #18181b;
+  --bg-elevated: #18181b;
+  --bg-subtle: #27272a;
+  --bg-inset: rgb(39 39 42 / 0.5);
+  --border-subtle: #27272a;
+  --border-strong: #3f3f46;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --accent: #818cf8;
+
+  --status-paid-bg: rgb(16 185 129 / 0.12);
+  --status-paid-fg: #34d399;
+  --status-pending-bg: rgb(245 158 11 / 0.12);
+  --status-pending-fg: #fbbf24;
+  --status-progress-bg: rgb(14 165 233 / 0.12);
+  --status-progress-fg: #38bdf8;
+  --status-leave-bg: rgb(139 92 246 / 0.14);
+  --status-leave-fg: #a78bfa;
+  --status-exception-bg: rgb(244 63 94 / 0.12);
+  --status-exception-fg: #fb7185;
+  --status-completed-bg: rgb(99 102 241 / 0.14);
+  --status-completed-fg: #a5b4fc;
+  --status-neutral-bg: #27272a;
+  --status-neutral-fg: #a1a1aa;
+}
+@theme inline {
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-subtle: var(--bg-subtle);
+  --color-inset: var(--bg-inset);
+  --color-line: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text-primary);
+  --color-fg-2: var(--text-secondary);
+  --color-fg-3: var(--text-tertiary);
+  --color-accent: var(--accent);
+}
+
+@layer components {
+  /* Shared pieces for the attendance / report screens, in the app's original style. */
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-zinc-800;
+  }
+  .card-title {
+    @apply text-sm font-bold text-slate-900 dark:text-zinc-100;
+  }
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500;
+  }
+
+  .btn {
+    @apply inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply h-8 px-3;
+  }
+  .btn-lg {
+    @apply h-11 px-6 text-sm;
+  }
+  .btn-primary {
+    @apply bg-indigo-600 text-white shadow-sm hover:bg-indigo-500;
+  }
+  .btn-secondary {
+    @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+  }
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
+  .btn-danger {
+    @apply bg-rose-600 text-white shadow-sm hover:bg-rose-500;
+  }
+  .btn-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
+
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400;
+  }
+  .input {
+    @apply h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-indigo-400;
+  }
+  textarea.input {
+    @apply h-auto py-2;
+  }
+
+  .segmented {
+    @apply inline-flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-zinc-800;
+  }
+  .segmented > button {
+    @apply rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition-all hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200;
+  }
+  .segmented > button[aria-pressed='true'] {
+    @apply bg-white font-bold text-slate-900 shadow-xs dark:bg-zinc-700 dark:text-white;
+  }
+
+  .table {
+    @apply w-full border-collapse text-left text-xs;
+  }
+  .table thead th {
+    @apply sticky top-0 z-10 whitespace-nowrap border-b border-slate-200 bg-white px-4 py-3 font-semibold text-slate-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400;
+  }
+  .table tbody td {
+    @apply whitespace-nowrap border-b border-slate-100 px-4 py-3 text-slate-700 dark:border-zinc-800/60 dark:text-zinc-300;
+  }
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .table tbody tr {
+    @apply transition-colors hover:bg-slate-50/70 dark:hover:bg-zinc-800/40;
+  }
+  .num {
+    @apply text-right tabular-nums;
+  }
+
+  .avatar {
+    @apply flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300;
+  }
+
+  /* Status pill */
+  .status-tag {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .status-tag .dot {
+    @apply h-1.5 w-1.5 rounded-full bg-current;
+  }
+  .status-tag.paid { background: var(--status-paid-bg); color: var(--status-paid-fg); }
+  .status-tag.pending { background: var(--status-pending-bg); color: var(--status-pending-fg); }
+  .status-tag.progress { background: var(--status-progress-bg); color: var(--status-progress-fg); }
+  .status-tag.leave { background: var(--status-leave-bg); color: var(--status-leave-fg); }
+  .status-tag.exception { background: var(--status-exception-bg); color: var(--status-exception-fg); }
+  .status-tag.completed { background: var(--status-completed-bg); color: var(--status-completed-fg); }
+  .status-tag.neutral { background: var(--status-neutral-bg); color: var(--status-neutral-fg); }
+
+  /* Number tile */
+  .tile {
+    @apply flex min-w-0 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-900;
+  }
+  .tile .tile-label {
+    @apply truncate text-xs text-slate-500 dark:text-zinc-400;
+  }
+  .tile .tile-value {
+    @apply text-xl font-bold whitespace-nowrap tabular-nums text-slate-900 dark:text-zinc-100;
+  }
+  .tile .tile-hint {
+    @apply truncate text-xs text-slate-400 dark:text-zinc-500;
+  }
+  .tile[data-tone='success'] .tile-value { color: var(--status-paid-fg); }
+  .tile[data-tone='brand'] .tile-value { color: var(--status-completed-fg); }
+  .tile[data-tone='warning'] .tile-value { color: var(--status-pending-fg); }
+  .tile[data-tone='danger'] .tile-value { color: var(--status-exception-fg); }
+  .tile[data-tone='violet'] .tile-value { color: var(--status-leave-fg); }
+  .tile.clickable {
+    @apply cursor-pointer transition-colors hover:border-slate-300 dark:hover:border-zinc-700;
+  }
+  .tile.clickable[aria-pressed='true'] {
+    @apply border-indigo-500 ring-1 ring-indigo-500 dark:border-indigo-400 dark:ring-indigo-400;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded bg-slate-100 dark:bg-zinc-800;
+  }
+}
+
+/* Printing a report: drop the app chrome, keep the content. */
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body,
+  #root {
+    background: white !important;
+    height: auto !important;
+  }
+  .card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  /* The screen layout is one viewport tall and clips; let the print flow onto more pages. */
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Printed reports (components/report/PrintDocument.tsx).
+   Fixed print colours, independent of the screen theme.
+   ------------------------------------------------------------------------- */
+.print-only {
+  display: none;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 12mm 14mm;
+  @bottom-left {
+    content: "Grateful Solutions Cambodia Co., Ltd · Confidential";
+    font: 7.5pt system-ui, sans-serif;
+    color: #64748b;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font: 7.5pt system-ui, sans-serif;
+    color: #64748b;
+  }
+}
+@page landscape {
+  size: A4 landscape;
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+  .pd-landscape {
+    page: landscape;
+  }
+}
+
+.pd {
+  color: #0f172a;
+  font: 9pt/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.pd-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #0f172a;
+}
+.pd-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pd-brand img {
+  height: 40px;
+  width: auto;
+}
+.pd-company {
+  font-size: 13pt;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.pd-legal {
+  font-size: 8pt;
+  color: #64748b;
+}
+.pd-title {
+  text-align: right;
+  font-size: 8pt;
+  color: #64748b;
+}
+.pd-title h1 {
+  margin: 0 0 2px;
+  font-size: 14pt;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pd-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 20px;
+  margin: 12px 0;
+}
+.pd-meta dt {
+  font-size: 7pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+.pd-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+/* Hairline grid: the 1px gaps show the container's colour. */
+.pd-figures {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: #cbd5e1;
+  border: 1px solid #cbd5e1;
+  margin-bottom: 14px;
+}
+.pd-landscape .pd-figures {
+  grid-template-columns: repeat(8, 1fr);
+}
+.pd-figures > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  background: #fff;
+}
+.pd-figures span {
+  font-size: 7pt;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+.pd-figures strong {
+  font-size: 11pt;
+}
+.pd-section {
+  margin: 14px 0 6px;
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #334155;
+}
+.pd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+}
+.pd-table th {
+  background: #1e293b;
+  color: #fff;
+  font-weight: 600;
+  text-align: left;
+  padding: 5px 6px;
+  white-space: nowrap;
+}
+.pd-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+.pd-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+.pd-table tr {
+  break-inside: avoid;
+}
+.pd-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pd-table .muted td,
+.pd-table .muted-text {
+  color: #94a3b8;
+}
+.pd-table tfoot td {
+  background: #e2e8f0;
+  border-top: 1.5px solid #0f172a;
+  font-weight: 700;
+}
+.pd-sub {
+  display: block;
+  font-size: 7pt;
+  color: #64748b;
+}
+.pd-section .pd-sub {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pd-warn {
+  color: #b45309;
+  font-weight: 600;
+}
+.pd-bad {
+  color: #be123c;
+  font-weight: 600;
+}
+.pd-status {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 7.5pt;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f1f5f9;
+  color: #475569;
+}
+.pd-status[data-s="Present"] { background: #dcfce7; color: #166534; }
+.pd-status[data-s="Late"] { background: #fef3c7; color: #92400e; }
+.pd-status[data-s="HalfDay"] { background: #e0e7ff; color: #3730a3; }
+.pd-status[data-s="OnLeave"] { background: #f3e8ff; color: #6b21a8; }
+.pd-status[data-s="Absent"] { background: #ffe4e6; color: #9f1239; }
+.pd-status[data-s="InProgress"] { background: #e0f2fe; color: #075985; }
+.pd-signatures {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 32px;
+  margin-top: 40px;
+  break-inside: avoid;
+}
+.pd-sign-line {
+  height: 36px;
+  border-bottom: 1px solid #0f172a;
+}
+.pd-sign-role {
+  margin-top: 4px;
+  font-weight: 600;
+}
+.pd-sign-hint {
+  font-size: 7pt;
+  color: #64748b;
 }

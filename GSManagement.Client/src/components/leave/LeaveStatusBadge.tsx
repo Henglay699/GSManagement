@@ -1,4 +1,4 @@
-﻿import type { LeaveStatus } from "../../types/leave";
+import type { LeaveStatus } from "../../types/leave";
 
 const STATUS_STYLES: Record<LeaveStatus, string> = {
   Pending:
@@ -8,7 +8,7 @@ const STATUS_STYLES: Record<LeaveStatus, string> = {
   Reject:
     "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-800/50",
   Cancel:
-    "bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 ring-slate-500/20 dark:ring-zinc-700/50",
+    "bg-slate-100 dark:bg-subtle text-fg-2 ring-slate-500/20 dark:ring-zinc-700",
 };
 
 interface LeaveStatusBadgeProps {

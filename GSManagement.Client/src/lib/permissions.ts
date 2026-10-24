@@ -1,5 +1,9 @@
 import { paths } from "./paths";
 
+// The system admin role (Role.AdminRoleName on the backend). The server refuses
+// to delete or rename it, or to delete users who hold it.
+export const ADMIN_ROLE = "Admin";
+
 // Must match the AppPermission enum names on the backend
 // (GSManagement.Domain/Entities/Enums/AppPermission.cs).
 export const Permission = {
@@ -37,7 +41,7 @@ export type Permission = (typeof Permission)[keyof typeof Permission];
 // lands on their own clock-in page.
 export const homePages: { path: string; permission?: Permission }[] = [
   { path: paths.dashboard, permission: Permission.ViewAttendance },
-  { path: paths.myAttendance },
+  { path: paths.myToday },
   { path: paths.users, permission: Permission.ViewUser },
   { path: paths.attendance, permission: Permission.ViewAttendance },
   { path: paths.leaveRequests, permission: Permission.ViewLeave },

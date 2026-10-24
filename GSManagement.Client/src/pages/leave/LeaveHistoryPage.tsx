@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Loader2, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  Pencil,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useAsync } from "../../hooks/useAsync";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../lib/api";
@@ -23,7 +29,7 @@ import { Permission } from "../../lib/permissions";
 const PAGE_SIZE = 8;
 
 const filterInputClass =
-  "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:focus:border-zinc-500";
+  "rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-line-strong dark:bg-surface dark:text-zinc-200 dark:focus:border-white0";
 
 export default function LeaveHistoryPage() {
   const { hasPermission } = useAuth();
@@ -93,10 +99,10 @@ export default function LeaveHistoryPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
+        <h1 className="text-xl font-semibold text-fg">
           Leave History
         </h1>
-        <p className="text-sm text-slate-500 dark:text-zinc-400">
+        <p className="text-sm text-fg-2">
           View historical leave records, statuses, and action logs.
         </p>
       </div>
@@ -105,13 +111,13 @@ export default function LeaveHistoryPage() {
         <div className="relative">
           <Search
             size={16}
-            className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400 dark:text-zinc-500"
+            className="pointer-events-none absolute left-2.5 top-2.5 text-fg-3 dark:text-white0"
           />
           <input
             value={search}
             onChange={(e) => onFilter(setSearch)(e.target.value)}
             placeholder="Search employee..."
-            className="rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-slate-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+            className="rounded-2xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm text-slate-800 outline-none placeholder:text-fg-3 focus:border-slate-400 dark:border-line-strong dark:bg-surface dark:text-zinc-200 dark:placeholder:text-white0 dark:focus:border-white0"
           />
         </div>
 
@@ -128,7 +134,7 @@ export default function LeaveHistoryPage() {
           <option value="Cancel">Cancelled</option>
         </select>
 
-        <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
+        <div className="flex items-center gap-1.5 text-sm text-fg-2">
           <input
             type="date"
             value={fromDate}
@@ -164,14 +170,14 @@ export default function LeaveHistoryPage() {
       </div>
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+        <div className="mb-4 flex items-center gap-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
           <AlertCircle size={16} /> {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-800">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-zinc-800">
-          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:bg-zinc-800/50 dark:text-zinc-400">
+      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-line">
+        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-line">
+          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 dark:bg-subtle dark:text-zinc-400">
             <tr>
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Type</th>
@@ -183,12 +189,12 @@ export default function LeaveHistoryPage() {
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+          <tbody className="divide-y divide-slate-100 bg-white dark:divide-line dark:bg-surface">
             {loading ? (
               <tr>
                 <td
                   colSpan={8}
-                  className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
+                  className="px-4 py-10 text-center text-fg-3 dark:text-white0"
                 >
                   <Loader2 className="mx-auto animate-spin" size={18} />
                 </td>
@@ -197,7 +203,7 @@ export default function LeaveHistoryPage() {
               <tr>
                 <td
                   colSpan={8}
-                  className="px-4 py-10 text-center text-slate-400 dark:text-zinc-500"
+                  className="px-4 py-10 text-center text-fg-3 dark:text-white0"
                 >
                   No leave history found.
                 </td>
@@ -206,32 +212,32 @@ export default function LeaveHistoryPage() {
               requests.map((r) => (
                 <tr
                   key={r.id}
-                  className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/40"
+                  className="hover:bg-slate-50/60 dark:hover:bg-zinc-800"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-zinc-200">
+                  <td className="px-4 py-3 font-medium text-fg">
                     <Link
                       to={paths.leaveDetail(r.id)}
-                      className="hover:underline text-slate-900 dark:text-zinc-100"
+                      className="hover:underline text-fg"
                     >
                       {r.userName}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-fg-2">
                     {r.leaveType}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-fg-2">
                     {r.startDate} → {r.endDate}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-fg-2">
                     {r.totalDays}
                   </td>
                   <td className="px-4 py-3">
                     <LeaveStatusBadge status={r.status} />
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-fg-2">
                     {r.approverName || "—"}
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-zinc-400">
+                  <td className="max-w-[200px] truncate px-4 py-3 text-fg-2">
                     {r.remark || "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -240,7 +246,7 @@ export default function LeaveHistoryPage() {
                         <button
                           onClick={() => setEditingRequest(r)}
                           title="Edit leave request"
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 dark:border-line-strong dark:text-zinc-300 dark:hover:bg-zinc-800"
                         >
                           <Pencil size={12} /> Edit
                         </button>
@@ -250,7 +256,7 @@ export default function LeaveHistoryPage() {
                           disabled={deletingId === r.id}
                           onClick={() => setDeletingRequest(r)}
                           title="Delete leave request"
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-zinc-700 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-line-strong dark:text-rose-400 dark:hover:bg-rose-950/40"
                         >
                           <Trash2 size={12} /> Delete
                         </button>
@@ -264,7 +270,7 @@ export default function LeaveHistoryPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-zinc-400">
+      <div className="mt-4 flex items-center justify-between text-sm text-fg-2">
         <span>
           Page {pageNumber} of {totalPages} · {totalCount} total
         </span>
@@ -272,14 +278,14 @@ export default function LeaveHistoryPage() {
           <button
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => p - 1)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-xl border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-line-strong dark:hover:bg-zinc-800"
           >
             Prev
           </button>
           <button
             disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => p + 1)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-xl border border-slate-200 px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-line-strong dark:hover:bg-zinc-800"
           >
             Next
           </button>
@@ -303,7 +309,7 @@ export default function LeaveHistoryPage() {
           message={
             <>
               Are you sure you want to delete the leave request for{" "}
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">
+              <span className="font-semibold text-fg">
                 {deletingRequest.userName}
               </span>{" "}
               ({deletingRequest.startDate} → {deletingRequest.endDate})? This

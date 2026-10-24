@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Loader2, LogIn } from "lucide-react";
+import {
+  Loader2,
+  LogIn,
+} from "lucide-react";
 import AuthCard, {
   AuthError,
   authButtonClass,

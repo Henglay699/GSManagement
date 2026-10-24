@@ -8,8 +8,8 @@ namespace GSManagement.Api.Features.AttendanceFeature;
 
 // Closes out each working day just after midnight:
 // - active employees with no attendance record for the day are marked Absent;
-// - records that have a clock-in but no clock-out keep their status and get a
-//   "Missed clock-out" remark so HR can follow up.
+// - records that have a clock-in but no clock-out keep their status and are
+//   flagged MissedClockOut so HR can follow up.
 // Days on approved leave already have a record (from the leave sync), so
 // they're left alone. Sundays and public holidays are skipped.
 //
@@ -21,8 +21,6 @@ public sealed class AbsenceMarkerService(
 {
     // A few minutes past midnight so late clock-outs right at 00:00 land first.
     private static readonly TimeSpan RunAt = TimeSpan.FromMinutes(5);
-
-    public const string MissedClockOutRemark = "Missed clock-out";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -87,23 +85,14 @@ public sealed class AbsenceMarkerService(
             UserId = userId,
             Date = day,
             Status = AttendanceStatus.Absent,
-            Remark = "No clock-in (marked automatically)",
             ShiftId = defaultShiftId
         }));
 
         var missedClockOut = await context.Attendances
-            .Where(a => a.Date == day
-                && a.CheckInTime != null
-                && a.CheckOutTime == null
-                && (a.Remark == null || !a.Remark.Contains(MissedClockOutRemark)))
+            .Where(a => a.Date == day && a.CheckInTime != null && a.CheckOutTime == null && !a.MissedClockOut)
             .ToListAsync(ct);
-
         foreach (var attendance in missedClockOut)
-        {
-            attendance.Remark = string.IsNullOrWhiteSpace(attendance.Remark)
-                ? MissedClockOutRemark
-                : $"{attendance.Remark}; {MissedClockOutRemark}";
-        }
+            attendance.MissedClockOut = true;
 
         await context.SaveChangesAsync(ct);
 

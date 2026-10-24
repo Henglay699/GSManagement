@@ -6,7 +6,10 @@ import React, {
   useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { Bell, X } from "lucide-react";
+import {
+  Bell,
+  X,
+} from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { paths } from "../lib/paths";
 import { Permission } from "../lib/permissions";
@@ -83,20 +86,20 @@ export function LeaveNotificationsProvider({
             <div
               key={t.id}
               role="status"
-              className="flex items-start gap-3 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-4"
+              className="flex items-start gap-3 rounded-2xl bg-surface border border-slate-200 dark:border-line shadow-xl p-4"
             >
               <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 shrink-0">
                 <Bell size={16} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-slate-900 dark:text-zinc-100">
+                <div className="text-xs font-bold text-fg">
                   New leave request
                 </div>
-                <div className="text-xs text-slate-600 dark:text-zinc-300 mt-0.5">
+                <div className="text-xs text-fg-2 mt-0.5">
                   {t.userName} · {t.leaveType}
                   {t.isHalfDay ? ` (½ day ${t.halfDayPeriod ?? ""})` : ""}
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-fg-3">
                   {t.startDate}
                   {t.endDate !== t.startDate && ` → ${t.endDate}`}
                 </div>
@@ -110,7 +113,7 @@ export function LeaveNotificationsProvider({
               </div>
               <button
                 onClick={() => dismiss(t.id)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
+                className="text-fg-3 hover:text-slate-600 dark:hover:text-zinc-200"
                 aria-label="Dismiss"
               >
                 <X size={14} />

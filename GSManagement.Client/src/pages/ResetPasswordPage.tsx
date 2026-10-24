@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, KeyRound, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  KeyRound,
+  Loader2,
+} from "lucide-react";
 import AuthCard, {
   AuthError,
   AuthSuccess,
@@ -44,7 +48,7 @@ function ResetPasswordPage() {
   const backToLogin = (
     <Link
       to={paths.login}
-      className="flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+      className="flex items-center justify-center gap-1.5 text-sm font-medium text-fg-2 hover:text-indigo-600 dark:hover:text-indigo-400"
     >
       <ArrowLeft size={14} />
       Back to sign in

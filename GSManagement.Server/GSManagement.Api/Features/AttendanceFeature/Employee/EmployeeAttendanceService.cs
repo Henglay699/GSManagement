@@ -1,5 +1,7 @@
 using GSManagement.Api.Features.AttendanceFeature.Employee.DTOs;
+using GSManagement.Api.Features.AttendanceFeature.Summary;
 using GSManagement.Api.Features.ShiftFeature.DTOs;
+using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.Enums;
@@ -11,267 +13,138 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
 {
     private readonly GSDbContext _context = context;
 
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
     public async Task<ClockResultDto> ClockInAsync(int userId)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
         var now = TimeOnly.FromDateTime(DateTime.Now);
+        var (holiday, shift) = await DayContextAsync();
+        if (Today.DayOfWeek == DayOfWeek.Sunday)
+            throw new InvalidOperationException("Today is a day off (Sunday).");
+        if (holiday is not null)
+            throw new InvalidOperationException($"Today is a public holiday ({holiday}).");
+        var attendance = await _context.Attendances
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == Today);
 
-        // Fetch default shift
-        var shift = await _context.Shifts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.IsDefault)
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync();
+        if (attendance?.Status == AttendanceStatus.OnLeave)
+            throw new InvalidOperationException("You have approved full-day leave today.");
+        if (attendance?.CheckInTime is { } already)
+            throw new InvalidOperationException($"You already clocked in today at {already:HH:mm}.");
 
-        var shiftStart = shift?.StartTime ?? new TimeOnly(8, 0);
-        var graceMinutes = shift?.GraceMinutes ?? 15;
-        var lateThreshold = shiftStart.AddMinutes(graceMinutes);
+        var opensAt = AttendanceRules.ClockInOpensAt(attendance);
+        if (now < opensAt)
+            throw new InvalidOperationException(opensAt == AttendanceRules.EarliestClockIn
+                ? $"Clock-in opens at {opensAt:HH:mm}."
+                : $"You're on half-day leave this morning. Clock-in opens at {opensAt:HH:mm}.");
 
-        var existing = await _context.Attendances
-            .Include(a => a.Shift)
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == today);
-
-        if (existing is not null)
+        if (attendance is null)
         {
-            if (existing.Status == AttendanceStatus.Leave && !existing.IsHalfDay)
-            {
-                throw new InvalidOperationException("You have an approved full-day leave today.");
-            }
-
-            if (existing.CheckInTime.HasValue)
-            {
-                throw new InvalidOperationException("You have already clocked in today at " + existing.CheckInTime.Value.ToString("HH:mm") + ".");
-            }
-
-            // Existing record without check-in (e.g. half-day morning leave or admin placeholder)
-            existing.CheckInTime = now;
-            existing.ShiftId ??= shift?.Id;
-
-            if (existing.IsHalfDay && existing.HalfDayPeriod == HalfDayPeriod.Morning)
-            {
-                // Working afternoon half: shift starts around 13:00
-                var afternoonStart = new TimeOnly(13, 0);
-                if (now > afternoonStart.AddMinutes(graceMinutes))
-                {
-                    existing.Remark = $"Afternoon check-in late at {now:HH:mm}";
-                }
-                else
-                {
-                    existing.Remark = $"Afternoon check-in on time at {now:HH:mm}";
-                }
-            }
-            else
-            {
-                if (now > lateThreshold)
-                {
-                    var lateMinutes = (int)(now - shiftStart).TotalMinutes;
-                    existing.Status = AttendanceStatus.Late;
-                    existing.Remark = $"Late by {lateMinutes} minutes";
-                }
-                else
-                {
-                    existing.Status = AttendanceStatus.OnTime;
-                    existing.Remark = "Clocked in on time";
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return new ClockResultDto(
-                existing.Id,
-                existing.Date,
-                existing.CheckInTime,
-                existing.CheckOutTime,
-                existing.TotalHour,
-                existing.OvertimeMinutes,
-                existing.Status,
-                existing.Remark,
-                existing.Shift?.Name ?? shift?.Name,
-                "Clocked in successfully at " + now.ToString("HH:mm")
-            );
+            attendance = new Attendance { UserId = userId, Date = Today, Status = AttendanceStatus.Present };
+            _context.Attendances.Add(attendance);
+        }
+        else if (attendance.Status == AttendanceStatus.Absent)
+        {
+            // Marked absent earlier in the day: clocking in makes it a worked day.
+            attendance.Status = AttendanceStatus.Present;
         }
 
-        // New attendance record
-        var status = now > lateThreshold ? AttendanceStatus.Late : AttendanceStatus.OnTime;
-        var remark = status == AttendanceStatus.Late
-            ? $"Late by {(int)(now - shiftStart).TotalMinutes} minutes"
-            : "Clocked in on time";
-
-        var attendance = new Attendance
-        {
-            UserId = userId,
-            Date = today,
-            CheckInTime = now,
-            Status = status,
-            Remark = remark,
-            ShiftId = shift?.Id,
-            IsHalfDay = false
-        };
-
-        _context.Attendances.Add(attendance);
+        attendance.CheckInTime = now;
+        attendance.ShiftId ??= shift?.Id;
+        AttendanceRules.Apply(attendance, shift);
         await _context.SaveChangesAsync();
 
-        return new ClockResultDto(
-            attendance.Id,
-            attendance.Date,
-            attendance.CheckInTime,
-            attendance.CheckOutTime,
-            attendance.TotalHour,
-            attendance.OvertimeMinutes,
-            attendance.Status,
-            attendance.Remark,
-            shift?.Name,
-            "Clocked in successfully at " + now.ToString("HH:mm")
-        );
+        var today = await GetTodayAsync(userId);
+        var message = today.LateMinutes > 0
+            ? $"Clocked in at {now:HH:mm}, {today.LateMinutes} min late."
+            : $"Clocked in at {now:HH:mm}. Have a good day!";
+        return new ClockResultDto(today, message);
     }
 
     public async Task<ClockResultDto> ClockOutAsync(int userId)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
         var now = TimeOnly.FromDateTime(DateTime.Now);
-
+        var (_, defaultShift) = await DayContextAsync();
         var attendance = await _context.Attendances
             .Include(a => a.Shift)
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == today);
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == Today);
 
-        if (attendance is null || !attendance.CheckInTime.HasValue)
-        {
-            throw new InvalidOperationException("You have not clocked in today yet.");
-        }
-
-        if (attendance.CheckOutTime.HasValue)
-        {
-            throw new InvalidOperationException("You have already clocked out today at " + attendance.CheckOutTime.Value.ToString("HH:mm") + ".");
-        }
+        if (attendance?.CheckInTime is null)
+            throw new InvalidOperationException("You have not clocked in today.");
+        if (attendance.CheckOutTime is { } done)
+            throw new InvalidOperationException($"You already clocked out today at {done:HH:mm}.");
 
         attendance.CheckOutTime = now;
-
-        // Fetch shift details for overtime calculation
-        var shift = attendance.Shift
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync(s => s.IsDefault)
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync();
-
-        var shiftEnd = shift?.EndTime ?? new TimeOnly(17, 0);
-
-        // If clocked out after regular shift end time, calculate overtime
-        if (now > shiftEnd)
-        {
-            var otMinutes = Math.Round((now - shiftEnd).TotalMinutes, 0);
-            attendance.OvertimeMinutes = otMinutes;
-
-            var overtimeRecord = await _context.OvertimeRecords
-                .FirstOrDefaultAsync(o => o.AttendanceId == attendance.Id);
-
-            if (overtimeRecord is null)
-            {
-                _context.OvertimeRecords.Add(new OvertimeRecord
-                {
-                    AttendanceId = attendance.Id,
-                    OvertimeMinutes = otMinutes,
-                    Reason = $"Clocked out after shift end ({shiftEnd:HH:mm})"
-                });
-            }
-            else
-            {
-                overtimeRecord.OvertimeMinutes = otMinutes;
-            }
-        }
-        else
-        {
-            attendance.OvertimeMinutes = 0;
-        }
-
+        AttendanceRules.Apply(attendance, attendance.Shift ?? defaultShift);
         await _context.SaveChangesAsync();
 
-        return new ClockResultDto(
-            attendance.Id,
-            attendance.Date,
-            attendance.CheckInTime,
-            attendance.CheckOutTime,
-            attendance.TotalHour,
-            attendance.OvertimeMinutes,
-            attendance.Status,
-            attendance.Remark,
-            shift?.Name,
-            "Clocked out successfully at " + now.ToString("HH:mm")
-        );
+        var today = await GetTodayAsync(userId);
+        var message = today.OvertimeMinutes > 0
+            ? $"Clocked out at {now:HH:mm}, with {today.OvertimeMinutes} min overtime."
+            : today.EarlyLeaveMinutes > 0
+                ? $"Clocked out at {now:HH:mm}, {today.EarlyLeaveMinutes} min before the end of your shift."
+                : $"Clocked out at {now:HH:mm}. See you tomorrow!";
+        return new ClockResultDto(today, message);
     }
 
-    public async Task<EmployeeTodayStatusDto> GetTodayStatusAsync(int userId)
+    public async Task<EmployeeTodayDto> GetTodayAsync(int userId)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
-        var attendance = await _context.Attendances
-            .Include(a => a.Shift)
+        var (holiday, defaultShift) = await DayContextAsync();
+        var a = await _context.Attendances
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == today);
+            .Include(x => x.Shift)
+            .Include(x => x.LeaveRequest)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Date == Today);
 
-        var shift = attendance?.Shift
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync(s => s.IsDefault)
+        var shift = a?.Shift ?? defaultShift;
+        var window = a is null
+            ? (Start: shift?.StartTime ?? AttendanceRules.DefaultStart,
+               End: shift?.EndTime ?? AttendanceRules.DefaultEnd,
+               Grace: shift?.GraceMinutes ?? AttendanceRules.DefaultGraceMinutes)
+            : AttendanceRules.ExpectedWindow(shift, a);
+
+        var isDayOff = Today.DayOfWeek == DayOfWeek.Sunday;
+        var clockedInOnly = a?.CheckInTime is not null && a.CheckOutTime is null;
+        var status = a?.Status switch
+        {
+            AttendanceStatus.OnLeave => DayStatus.OnLeave,
+            AttendanceStatus.Absent => DayStatus.Absent,
+            _ when clockedInOnly => DayStatus.InProgress,
+            AttendanceStatus.HalfDay => DayStatus.HalfDay,
+            AttendanceStatus.Late => DayStatus.Late,
+            AttendanceStatus.Present => DayStatus.Present,
+            _ => isDayOff ? DayStatus.DayOff : holiday is not null ? DayStatus.Holiday : DayStatus.NotClockedIn
+        };
+
+        var workday = !isDayOff && holiday is null && a?.Status != AttendanceStatus.OnLeave;
+
+        return new EmployeeTodayDto(
+            Today,
+            status,
+            CanClockIn: workday && a?.CheckInTime is null,
+            CanClockOut: clockedInOnly,
+            AttendanceRules.ClockInOpensAt(a),
+            a?.CheckInTime,
+            a?.CheckOutTime,
+            window.Start,
+            window.End,
+            window.Grace,
+            a?.LateMinutes ?? 0,
+            a?.EarlyLeaveMinutes ?? 0,
+            (int)(a?.OvertimeMinutes ?? 0),
+            holiday,
+            a?.LeaveRequest?.LeaveType,
+            a?.HalfDayPeriod,
+            shift is null
+                ? null
+                : new ShiftDto(shift.Id, shift.Name, shift.StartTime, shift.EndTime, shift.GraceMinutes, shift.IsDefault));
+    }
+
+    private async Task<(string? Holiday, Shift? DefaultShift)> DayContextAsync()
+    {
+        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(Today.Year);
+        var holiday = holidays.FirstOrDefault(h => DateOnly.FromDateTime(h.Date) == Today);
+        var shift = await _context.Shifts.AsNoTracking().FirstOrDefaultAsync(s => s.IsDefault)
             ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync();
-
-        ShiftDto? shiftDto = shift is null ? null : new ShiftDto(
-            shift.Id,
-            shift.Name,
-            shift.StartTime,
-            shift.EndTime,
-            shift.GraceMinutes,
-            shift.IsDefault
-        );
-
-        return new EmployeeTodayStatusDto(
-            Date: today,
-            IsClockedIn: attendance?.CheckInTime.HasValue ?? false,
-            IsClockedOut: attendance?.CheckOutTime.HasValue ?? false,
-            CheckInTime: attendance?.CheckInTime,
-            CheckOutTime: attendance?.CheckOutTime,
-            TotalHours: attendance?.TotalHour,
-            OvertimeMinutes: attendance?.OvertimeMinutes,
-            Status: attendance?.Status,
-            Shift: shiftDto,
-            IsHalfDay: attendance?.IsHalfDay ?? false,
-            HalfDayPeriod: attendance?.HalfDayPeriod
-        );
-    }
-
-    public async Task<EmployeeMonthlySummaryDto> GetMonthlySummaryAsync(int userId, int year, int month)
-    {
-        var records = await _context.Attendances
-            .Include(a => a.Shift)
-            .AsNoTracking()
-            .Where(a => a.UserId == userId && a.Date.Year == year && a.Date.Month == month)
-            .OrderBy(a => a.Date)
-            .ToListAsync();
-
-        var recordDtos = records.Select(r => new EmployeeAttendanceRecordDto(
-            r.Id,
-            r.Date,
-            r.CheckInTime,
-            r.CheckOutTime,
-            r.TotalHour,
-            r.OvertimeMinutes,
-            r.Status,
-            r.Remark,
-            r.IsHalfDay,
-            r.HalfDayPeriod,
-            r.Shift?.Name
-        )).ToList();
-
-        var totalDaysWorked = records.Count(r => r.CheckInTime.HasValue);
-        var totalHours = Math.Round(records.Where(r => r.TotalHour.HasValue).Sum(r => r.TotalHour!.Value), 2);
-        var totalOtHours = Math.Round(records.Where(r => r.OvertimeMinutes.HasValue).Sum(r => r.OvertimeMinutes!.Value) / 60.0, 2);
-
-        return new EmployeeMonthlySummaryDto(
-            Year: year,
-            Month: month,
-            TotalDaysWorked: totalDaysWorked,
-            TotalHoursWorked: totalHours,
-            TotalOvertimeHours: totalOtHours,
-            TotalOnTime: records.Count(r => r.Status == AttendanceStatus.OnTime),
-            TotalLate: records.Count(r => r.Status == AttendanceStatus.Late),
-            TotalLeave: records.Count(r => r.Status == AttendanceStatus.Leave),
-            TotalAbsent: records.Count(r => r.Status == AttendanceStatus.Absent),
-            TotalHalfDayLeave: records.Count(r => r.Status == AttendanceStatus.HalfDayLeave),
-            Records: recordDtos
-        );
+        return (holiday?.EnglishName ?? holiday?.KhmerName, shift);
     }
 }

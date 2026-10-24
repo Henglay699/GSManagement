@@ -1,5 +1,10 @@
 import { FormEvent, useCallback, useState } from "react";
-import { AlertCircle, Clock, Sun, Moon } from "lucide-react";
+import {
+  AlertCircle,
+  Clock,
+  Moon,
+  Sun,
+} from "lucide-react";
 import UserSelect from "../ui/UserSelect";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
@@ -27,9 +32,9 @@ interface LeaveFormModalProps {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:border-indigo-400";
+  "w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-line-strong dark:bg-subtle dark:text-zinc-200 dark:focus:border-indigo-400";
 const labelClass =
-  "mb-1 block text-xs font-medium text-slate-600 dark:text-zinc-400";
+  "mb-1 block text-xs font-medium text-fg-2";
 
 export default function LeaveFormModal({
   request,
@@ -119,8 +124,8 @@ export default function LeaveFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl border border-transparent bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+      <div className="w-full max-w-md rounded-2xl border border-transparent bg-white p-6 shadow-2xl dark:border-line dark:bg-surface">
+        <h2 className="mb-4 text-base font-bold text-fg flex items-center gap-2">
           {isEdit
             ? "Edit Leave Request"
             : self
@@ -197,14 +202,14 @@ export default function LeaveFormModal({
           </div>
 
           {/* Half-Day Leave Toggle */}
-          <div className="p-3 bg-slate-50 dark:bg-zinc-800/60 rounded-xl border border-slate-200/80 dark:border-zinc-700/60 space-y-2.5">
+          <div className="p-3 bg-slate-50 dark:bg-subtle rounded-xl border border-slate-200/80 dark:border-line-strong space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock
                   size={15}
                   className="text-indigo-600 dark:text-indigo-400"
                 />
-                <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                <span className="text-xs font-semibold text-fg">
                   Half-Day Leave
                 </span>
               </div>
@@ -226,14 +231,14 @@ export default function LeaveFormModal({
             </div>
 
             {form.isHalfDay && (
-              <div className="pt-2 border-t border-slate-200 dark:border-zinc-700 flex gap-2">
+              <div className="pt-2 border-t border-slate-200 dark:border-line-strong flex gap-2">
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, halfDayPeriod: "Morning" })}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  className={`flex-1 py-1.5 px-2.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                     form.halfDayPeriod === "Morning"
                       ? "bg-indigo-600 text-white shadow-xs"
-                      : "bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100"
+                      : "bg-white dark:bg-subtle text-fg-2 border border-slate-200 dark:border-line-strong hover:bg-slate-100"
                   }`}
                 >
                   <Sun size={13} />
@@ -244,10 +249,10 @@ export default function LeaveFormModal({
                   onClick={() =>
                     setForm({ ...form, halfDayPeriod: "Afternoon" })
                   }
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  className={`flex-1 py-1.5 px-2.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                     form.halfDayPeriod === "Afternoon"
                       ? "bg-indigo-600 text-white shadow-xs"
-                      : "bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100"
+                      : "bg-white dark:bg-subtle text-fg-2 border border-slate-200 dark:border-line-strong hover:bg-slate-100"
                   }`}
                 >
                   <Moon size={13} />
@@ -296,7 +301,7 @@ export default function LeaveFormModal({
               value={form.remark}
               onChange={(e) => setForm({ ...form, remark: e.target.value })}
               rows={2}
-              className={`${inputClass} placeholder:text-slate-400 dark:placeholder:text-zinc-500`}
+              className={`${inputClass} placeholder:text-fg-3 dark:placeholder:text-white0`}
               placeholder="Reason or context for this leave..."
             />
           </div>

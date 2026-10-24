@@ -4,14 +4,14 @@ import { fetchPermissions } from "../../services/permissionService";
 import type { Permission } from "../../types/permission";
 import type { Role, RoleFormData } from "../../types/role";
 import {
-  Loader2,
-  Shield,
-  KeyRound,
-  Check,
-  Layers,
-  FileText,
   AlertCircle,
+  Check,
+  FileText,
+  KeyRound,
+  Layers,
+  Loader2,
   LockKeyhole,
+  Shield,
 } from "lucide-react";
 
 interface RoleFormProps {
@@ -126,33 +126,33 @@ function RoleForm({
           {/* Section Header */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
                 <Shield
                   size={16}
                   className="text-indigo-600 dark:text-indigo-400"
                 />
               </div>
 
-              <h4 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white">
                 Role Information
               </h4>
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-fg-2 leading-relaxed">
               Define the identity and purpose of this security role.
             </p>
           </div>
 
           {/* Role Name */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-semibold text-fg-2 uppercase tracking-wider mb-1.5">
               Role Name
             </label>
 
             <div className="relative">
               <Shield
                 size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-3 dark:text-white0"
               />
 
               <input
@@ -161,7 +161,7 @@ function RoleForm({
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="e.g. Administrator"
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/70 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs text-slate-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/70 dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-xs text-fg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
               />
             </div>
           </div>
@@ -169,11 +169,11 @@ function RoleForm({
           {/* Description */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 uppercase tracking-wider">
+              <label className="block text-[11px] font-semibold text-fg-2 uppercase tracking-wider">
                 Description
               </label>
 
-              <span className="text-[9px] text-slate-400 dark:text-zinc-500">
+              <span className="text-[9px] text-fg-3 dark:text-white0">
                 {description.length}/500
               </span>
             </div>
@@ -181,7 +181,7 @@ function RoleForm({
             <div className="relative">
               <FileText
                 size={14}
-                className="absolute left-3 top-3 text-slate-400 dark:text-zinc-500"
+                className="absolute left-3 top-3 text-fg-3 dark:text-white0"
               />
 
               <textarea
@@ -190,7 +190,7 @@ function RoleForm({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the purpose and responsibilities of this role..."
                 rows={6}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/70 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs text-slate-800 dark:text-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50/70 dark:bg-subtle border border-slate-200 dark:border-line-strong rounded-xl text-xs text-fg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-fg-3 dark:placeholder:text-white0"
               />
             </div>
           </div>
@@ -198,7 +198,7 @@ function RoleForm({
           {/* Permission Summary */}
           <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-2xl bg-surface border border-indigo-100 dark:border-indigo-900 flex items-center justify-center">
                 <LockKeyhole
                   size={14}
                   className="text-indigo-600 dark:text-indigo-400"
@@ -206,19 +206,19 @@ function RoleForm({
               </div>
 
               <div>
-                <p className="text-[11px] font-bold text-slate-800 dark:text-zinc-100">
+                <p className="text-[11px] font-bold text-slate-800 dark:text-white">
                   Access Scope
                 </p>
 
-                <p className="text-[9px] text-slate-500 dark:text-zinc-400">
+                <p className="text-[9px] text-fg-2">
                   Permissions assigned to this role
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg p-2.5">
-                <p className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase font-semibold">
+              <div className="bg-surface border border-slate-200 dark:border-line-strong rounded-2xl p-2.5">
+                <p className="text-[9px] text-fg-3 dark:text-white0 uppercase font-semibold">
                   Assigned
                 </p>
 
@@ -227,12 +227,12 @@ function RoleForm({
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg p-2.5">
-                <p className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase font-semibold">
+              <div className="bg-surface border border-slate-200 dark:border-line-strong rounded-2xl p-2.5">
+                <p className="text-[9px] text-fg-3 dark:text-white0 uppercase font-semibold">
                   Available
                 </p>
 
-                <p className="text-lg font-bold text-slate-700 dark:text-zinc-300">
+                <p className="text-lg font-bold text-fg-2">
                   {permissions.length}
                 </p>
               </div>
@@ -248,7 +248,7 @@ function RoleForm({
           <div className="flex items-center justify-between mb-2.5">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-100">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">
                   Permission Matrix
                 </h3>
 
@@ -257,7 +257,7 @@ function RoleForm({
                 </span>
               </div>
 
-              <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+              <p className="text-[10px] text-fg-2 mt-0.5">
                 Configure access by system module
               </p>
             </div>
@@ -269,9 +269,9 @@ function RoleForm({
           </div>
 
           {/* Scrollable Matrix */}
-          <div className="h-[520px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+          <div className="h-[520px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
             {loadingPerms ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-zinc-500">
+              <div className="h-full flex flex-col items-center justify-center text-fg-3 dark:text-white0">
                 <Loader2
                   size={24}
                   className="animate-spin text-indigo-600 dark:text-indigo-400 mb-2"
@@ -282,7 +282,7 @@ function RoleForm({
                 </span>
               </div>
             ) : Object.keys(groupedPermissions).length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400 dark:text-zinc-500">
+              <div className="h-full flex items-center justify-center text-xs text-fg-3 dark:text-white0">
                 No permissions available.
               </div>
             ) : (
@@ -298,12 +298,12 @@ function RoleForm({
                 return (
                   <div
                     key={moduleName}
-                    className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs overflow-hidden"
+                    className="bg-surface rounded-xl border border-slate-200 dark:border-line shadow-2xs overflow-hidden"
                   >
                     {/* Module Header */}
-                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-800">
+                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/80 dark:bg-subtle border-b border-slate-200 dark:border-line">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center shrink-0">
+                        <div className="w-7 h-7 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center shrink-0">
                           <Layers
                             size={13}
                             className="text-indigo-600 dark:text-indigo-400"
@@ -312,16 +312,16 @@ function RoleForm({
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wide truncate">
+                            <span className="text-[11px] font-bold text-slate-800 dark:text-white uppercase tracking-wide truncate">
                               {moduleName}
                             </span>
 
-                            <span className="text-[9px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 text-slate-500 dark:text-zinc-400 px-1.5 py-0.5 rounded-full font-semibold">
+                            <span className="text-[9px] bg-surface border border-slate-200 dark:border-line-strong text-fg-2 px-1.5 py-0.5 rounded-full font-semibold">
                               {perms.length}
                             </span>
                           </div>
 
-                          <span className="text-[9px] text-slate-400 dark:text-zinc-500">
+                          <span className="text-[9px] text-fg-3 dark:text-white0">
                             {selectedCount} of {perms.length} selected
                           </span>
                         </div>
@@ -351,10 +351,10 @@ function RoleForm({
                           <div
                             key={perm.id}
                             onClick={() => togglePermission(perm.id)}
-                            className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border text-[11px] cursor-pointer transition-all select-none ${
+                            className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-2xl border text-[11px] cursor-pointer transition-all select-none ${
                               isSelected
                                 ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 font-medium"
-                                : "bg-slate-50/30 dark:bg-zinc-800/40 border-slate-200/80 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600"
+                                : "bg-slate-50/30 dark:bg-subtle border-slate-200/80 dark:border-line-strong text-fg-2 hover:bg-slate-50 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600"
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -363,7 +363,7 @@ function RoleForm({
                                 className={
                                   isSelected
                                     ? "text-indigo-600 dark:text-indigo-400 shrink-0"
-                                    : "text-slate-400 dark:text-zinc-500 shrink-0"
+                                    : "text-fg-3 dark:text-white0 shrink-0"
                                 }
                               />
 
@@ -373,10 +373,10 @@ function RoleForm({
                             </div>
 
                             <div
-                              className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
+                              className={`w-4 h-4 rounded-xl flex items-center justify-center border transition-all shrink-0 ${
                                 isSelected
                                   ? "bg-indigo-600 border-indigo-600 text-white"
-                                  : "border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-900"
+                                  : "border-slate-300 dark:border-zinc-600 bg-surface"
                               }`}
                             >
                               {isSelected && <Check size={10} />}
@@ -396,8 +396,8 @@ function RoleForm({
       {/* =====================================================
           FOOTER
       ====================================================== */}
-      <div className="flex items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800">
-        <div className="text-[10px] text-slate-400 dark:text-zinc-500">
+      <div className="flex items-center justify-between gap-3 mt-6 pt-4 border-t border-line">
+        <div className="text-[10px] text-fg-3 dark:text-white0">
           {selectedPermissionIds.length > 0 ? (
             <>
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">

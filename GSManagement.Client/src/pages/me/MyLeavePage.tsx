@@ -1,5 +1,10 @@
 import { useCallback, useState } from "react";
-import { AlertCircle, CalendarOff, Loader2, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarOff,
+  Loader2,
+  Plus,
+} from "lucide-react";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
 import {
@@ -60,11 +65,11 @@ export default function MyLeavePage() {
     <div className="space-y-5 max-w-5xl mx-auto pb-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight text-fg flex items-center gap-2">
             <CalendarOff size={20} className="text-indigo-600 dark:text-indigo-400" />
             My Leave
           </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400">
+          <p className="text-sm text-fg-2">
             Request full or half-day leave. HR will review it.
           </p>
         </div>
@@ -75,7 +80,7 @@ export default function MyLeavePage() {
               setStatus(e.target.value as LeaveStatus | "");
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+            className="input w-auto"
           >
             <option value="">All statuses</option>
             <option value="Pending">Pending</option>
@@ -85,7 +90,7 @@ export default function MyLeavePage() {
           </select>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-sm"
+            className="btn btn-primary"
           >
             <Plus size={14} />
             Request Leave
@@ -100,10 +105,10 @@ export default function MyLeavePage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="card overflow-x-auto">
+        <table className="table">
           <thead>
-            <tr className="border-b border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 font-semibold">
+            <tr className="border-b border-slate-200 dark:border-line text-fg-2 font-semibold">
               <th className="py-3 px-4">Type</th>
               <th className="py-3 px-4">Dates</th>
               <th className="py-3 px-4">Days</th>
@@ -113,7 +118,7 @@ export default function MyLeavePage() {
               <th className="py-3 px-4" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
+          <tbody className="divide-y divide-slate-100 dark:divide-line">
             {loading && items.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-10 text-center">
@@ -122,20 +127,20 @@ export default function MyLeavePage() {
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-slate-400 dark:text-zinc-500">
+                <td colSpan={7} className="py-10 text-center text-fg-3 dark:text-white0">
                   No leave requests yet.
                 </td>
               </tr>
             ) : (
               items.map((lr) => (
-                <tr key={lr.id} className="hover:bg-slate-50/70 dark:hover:bg-zinc-800/40">
-                  <td className="py-3 px-4 font-semibold text-slate-800 dark:text-zinc-200">
+                <tr key={lr.id} className="hover:bg-slate-50/70 dark:hover:bg-zinc-800">
+                  <td className="py-3 px-4 font-semibold text-fg">
                     <div className="flex items-center gap-1.5">
                       {lr.leaveType}
                       {lr.isHalfDay && <HalfDayBadge period={lr.halfDayPeriod} />}
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-slate-600 dark:text-zinc-300">
+                  <td className="py-3 px-4 text-fg-2">
                     {lr.startDate === lr.endDate
                       ? lr.startDate
                       : `${lr.startDate} → ${lr.endDate}`}
@@ -144,10 +149,10 @@ export default function MyLeavePage() {
                   <td className="py-3 px-4">
                     <LeaveStatusBadge status={lr.status} />
                   </td>
-                  <td className="py-3 px-4 text-slate-500 dark:text-zinc-400">
+                  <td className="py-3 px-4 text-fg-2">
                     {lr.approverName && lr.status !== "Pending" ? lr.approverName : "--"}
                   </td>
-                  <td className="py-3 px-4 text-slate-400 max-w-xs truncate whitespace-pre-line">
+                  <td className="py-3 px-4 text-fg-3 max-w-xs truncate whitespace-pre-line">
                     {lr.remark || "--"}
                   </td>
                   <td className="py-3 px-4 text-right">
@@ -172,17 +177,17 @@ export default function MyLeavePage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="rounded-lg px-3 py-1.5 border border-slate-200 dark:border-zinc-700 disabled:opacity-40"
+            className="rounded-2xl px-3 py-1.5 border border-slate-200 dark:border-line-strong disabled:opacity-40"
           >
             Previous
           </button>
-          <span className="text-slate-500 dark:text-zinc-400">
+          <span className="text-fg-2">
             Page {data.pageNumber} of {data.totalPages}
           </span>
           <button
             disabled={page >= data.totalPages}
             onClick={() => setPage(page + 1)}
-            className="rounded-lg px-3 py-1.5 border border-slate-200 dark:border-zinc-700 disabled:opacity-40"
+            className="rounded-2xl px-3 py-1.5 border border-slate-200 dark:border-line-strong disabled:opacity-40"
           >
             Next
           </button>

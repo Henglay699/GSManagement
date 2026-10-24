@@ -1,5 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { paths } from "../../lib/paths";
 
@@ -11,7 +13,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (status === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#0b0c0e]">
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-canvas">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
       </div>
     );

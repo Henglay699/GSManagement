@@ -10,7 +10,7 @@ import {
   FileText,
   Loader2,
   ShieldCheck,
-  User,
+  User as UserIcon,
 } from "lucide-react";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
@@ -30,11 +30,14 @@ export default function LeaveDetailPage() {
 
   const [actioning, setActioning] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Which request was just approved here (the page is reused across requests).
+  const [approvedId, setApprovedId] = useState<number | null>(null);
 
   const {
     data: request,
     loading,
     error: loadError,
+    setData,
   } = useAsync(
     useCallback(() => fetchLeaveRequestById(requestId), [requestId]),
     "Failed to load details.",
@@ -43,9 +46,12 @@ export default function LeaveDetailPage() {
 
   async function handleApprove() {
     setActioning(true);
+    setActionError(null);
     try {
-      await updateLeaveRequestStatus(requestId, { status: "Approved" });
-      navigate(-1);
+      // Show the approved request right away; going "back" could land on a
+      // stale copy of this page (e.g. when opened from the notification bell).
+      setData(await updateLeaveRequestStatus(requestId, { status: "Approved" }));
+      setApprovedId(requestId);
     } catch (err) {
       setActionError(getErrorMessage(err, "Failed to approve request."));
     } finally {
@@ -58,14 +64,14 @@ export default function LeaveDetailPage() {
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-line-strong dark:bg-subtle dark:text-zinc-200 dark:hover:bg-zinc-700"
         >
           <ArrowLeft size={16} /> Back to Leave Requests
         </button>
       </div>
 
       {loading ? (
-        <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 text-slate-400 dark:text-zinc-500">
+        <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 text-fg-3 dark:text-white0">
           <Loader2 className="animate-spin" size={28} />
           <p className="text-sm">Fetching leave request details...</p>
         </div>
@@ -75,18 +81,25 @@ export default function LeaveDetailPage() {
           <span>{error}</span>
         </div>
       ) : request ? (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <>
+        {approvedId === request.id && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <Check size={16} className="text-emerald-600 dark:text-emerald-400" />
+            Leave request approved. {request.userName}'s attendance has been updated.
+          </div>
+        )}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-line dark:bg-surface">
           {/* Card Title Bar */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-zinc-800">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-line">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-300">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-subtle dark:text-zinc-300">
                 <FileText size={20} />
               </span>
               <div>
-                <h1 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+                <h1 className="text-lg font-semibold text-fg">
                   Leave Request #{request.id}
                 </h1>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                <p className="text-xs text-fg-2">
                   Submitted on {request.createdAt}
                 </p>
               </div>
@@ -96,7 +109,7 @@ export default function LeaveDetailPage() {
 
           <div className="space-y-6 p-6">
             {/* Employee Profile Header */}
-            <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-4 dark:bg-zinc-800/60">
+            <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-4 dark:bg-subtle">
               {request.userImageUrl ? (
                 <img
                   src={request.userImageUrl}
@@ -105,14 +118,14 @@ export default function LeaveDetailPage() {
                 />
               ) : (
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-zinc-700 dark:text-zinc-300">
-                  <User size={28} />
+                  <UserIcon size={28} />
                 </div>
               )}
               <div>
-                <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
+                <h2 className="text-base font-semibold text-fg">
                   {request.userName}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                <p className="text-xs text-fg-2">
                   Employee ID: #{request.userId}
                 </p>
               </div>
@@ -128,19 +141,19 @@ export default function LeaveDetailPage() {
                 {request.totalDays === 1 ? "Working Day" : "Working Days"}
               </InfoTile>
               <InfoTile icon={<Calendar size={16} />} label="Date Range">
-                {request.startDate} <span className="text-slate-400">→</span>{" "}
+                {request.startDate} <span className="text-fg-3">→</span>{" "}
                 {request.endDate}
               </InfoTile>
             </div>
 
             {/* Remark Section */}
-            <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
-              <span className="text-xs font-medium text-slate-400 dark:text-zinc-500">
+            <div className="rounded-xl border border-slate-100 p-4 dark:border-line">
+              <span className="text-xs font-medium text-fg-3 dark:text-white0">
                 Remark / Justification
               </span>
-              <p className="mt-2 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-300">
+              <p className="mt-2 whitespace-pre-line text-sm text-fg-2">
                 {request.remark || (
-                  <span className="italic text-slate-400 dark:text-zinc-500">
+                  <span className="italic text-fg-3 dark:text-white0">
                     No remark provided for this request.
                   </span>
                 )}
@@ -148,7 +161,7 @@ export default function LeaveDetailPage() {
             </div>
 
             {request.approverName && (
-              <div className="flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-800/40 dark:text-zinc-300">
+              <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-subtle dark:text-zinc-300">
                 <ShieldCheck size={16} className="text-emerald-600" />
                 <span>
                   Approved by: <strong>{request.approverName}</strong>
@@ -159,17 +172,18 @@ export default function LeaveDetailPage() {
 
           {request.status === "Pending" &&
             hasPermission(Permission.UpdateLeave) && (
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-line dark:bg-surface/50">
               <button
                 disabled={actioning}
                 onClick={handleApprove}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 <Check size={16} /> Approve Request
               </button>
             </div>
           )}
         </div>
+        </>
       ) : null}
     </div>
   );
@@ -185,12 +199,12 @@ function InfoTile({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-100 p-4 dark:border-zinc-800">
-      <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-500">
+    <div className="rounded-xl border border-slate-100 p-4 dark:border-line">
+      <div className="flex items-center gap-2 text-xs text-fg-3 dark:text-white0">
         {icon}
         <span>{label}</span>
       </div>
-      <p className="mt-2 text-base font-medium text-slate-800 dark:text-zinc-200">
+      <p className="mt-2 text-base font-medium text-fg">
         {children}
       </p>
     </div>

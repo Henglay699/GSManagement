@@ -217,6 +217,17 @@ public class UserService(
                 return Result<UserResponse>.Fail("One or more specified role IDs do not exist.", ErrorType.NotFound);
             }
         }
+
+        // Never leave the system without an active admin.
+        var losesAdmin = IsActiveAdmin(user) &&
+            (!request.IsActive || newRoles.All(r => r.RoleName != Role.AdminRoleName));
+        if (losesAdmin && !await HasOtherActiveAdminAsync(user.Id, cancellationToken))
+        {
+            return Result<UserResponse>.Fail(
+                "This is the only active system admin. Make someone else an admin before removing the role or deactivating this account.",
+                ErrorType.Conflict);
+        }
+
         user.UserName = request.UserName;
         user.Email = request.Email.Trim().ToLower();
         user.IsActive = request.IsActive;
@@ -267,10 +278,16 @@ public class UserService(
         {
             return Result<bool>.Fail("User ID must be provided.", ErrorType.Validation);
         }
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == Id, cancellationToken);
+        var user = await _context.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == Id, cancellationToken);
         if (user == null)
         {
             return Result<bool>.Fail("User not found", ErrorType.NotFound);
+        }
+        if (user.Roles.Any(r => r.RoleName == Role.AdminRoleName))
+        {
+            return Result<bool>.Fail("System admin accounts can't be deleted.", ErrorType.Conflict);
         }
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
@@ -279,6 +296,14 @@ public class UserService(
         await hubContext.Clients.All.SendAsync("UserDeleted", user.Id, cancellationToken);
         return Result<bool>.Success(true);
     }
+
+    private static bool IsActiveAdmin(User user) =>
+        user.IsActive && user.Roles.Any(r => r.RoleName == Role.AdminRoleName);
+
+    private Task<bool> HasOtherActiveAdminAsync(int userId, CancellationToken cancellationToken) =>
+        _context.Users.AnyAsync(
+            u => u.Id != userId && u.IsActive && u.Roles.Any(r => r.RoleName == Role.AdminRoleName),
+            cancellationToken);
 
     //------------------------------==--------------------------------------------
     public async Task<Result<UserPhotoResponse>> UploadPhotoAsync(int id, IFormFile file, CancellationToken cancellationToken)

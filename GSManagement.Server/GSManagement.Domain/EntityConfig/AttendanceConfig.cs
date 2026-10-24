@@ -25,5 +25,13 @@ internal class AttendanceConfig : IEntityTypeConfiguration<Attendance>
 
         builder.Property(a => a.IsHalfDay)
             .HasDefaultValue(false);
+
+        builder.Property(a => a.MissedClockOut).HasDefaultValue(false);
+        builder.Property(a => a.LateMinutes).HasDefaultValue(0);
+        builder.Property(a => a.EarlyLeaveMinutes).HasDefaultValue(0);
+        builder.Property(a => a.Remark).HasMaxLength(500);
+
+        // One record per employee per day.
+        builder.HasIndex(a => new { a.UserId, a.Date }).IsUnique();
     }
 }
