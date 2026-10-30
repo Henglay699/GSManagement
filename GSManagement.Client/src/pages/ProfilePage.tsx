@@ -11,6 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import PhotoPicker from "../components/user/PhotoPicker";
+import ZoomablePhoto from "../components/ui/ZoomablePhoto";
 import { useAuth } from "../context/AuthContext";
 import { getErrorMessage } from "../lib/api";
 import {
@@ -376,11 +377,7 @@ function ProfilePage() {
         <div className="px-6 pb-6 flex flex-col items-center text-center -mt-12">
           <div className="w-24 h-24 rounded-full ring-4 ring-white dark:ring-surface bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center overflow-hidden shadow-md">
             {user.imageUrl ? (
-              <img
-                src={user.imageUrl}
-                alt={user.userName}
-                className="w-full h-full object-cover"
-              />
+              <ZoomablePhoto src={user.imageUrl} alt={user.userName} />
             ) : (
               <span className="text-3xl font-bold text-indigo-700 dark:text-indigo-300">
                 {user.userName.charAt(0).toUpperCase()}

@@ -3,6 +3,7 @@ using ClosedXML.Excel;
 using GSManagement.Api.Features.AttendanceFeature.Summary;
 using GSManagement.Api.Features.ReportFeature.DTOs;
 using GSManagement.Domain.Entities.Enums;
+using GSManagement.Api.Shared.Utils;
 
 namespace GSManagement.Api.Features.ReportFeature;
 
@@ -265,7 +266,7 @@ public static class ReportExcelBuilder
         var t = ws.Range(1, split + 1, 1, lastCol).Merge();
         t.Style.Font.SetBold().Font.SetFontSize(13).Font.SetFontColor(Ink);
         t.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
-        ws.Cell(2, split + 1).Value = $"Generated {DateTime.Now.ToString("dd MMM yyyy, HH:mm", Inv)}";
+        ws.Cell(2, split + 1).Value = $"Generated {AppClock.Now.ToString("dd MMM yyyy, HH:mm", Inv)}";
         var g = ws.Range(2, split + 1, 2, lastCol).Merge();
         g.Style.Font.SetFontSize(8).Font.SetFontColor(Muted);
         g.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;

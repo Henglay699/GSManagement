@@ -11,6 +11,7 @@ import {
   Loader2,
   ShieldCheck,
   User as UserIcon,
+  XCircle,
 } from "lucide-react";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
@@ -19,6 +20,9 @@ import {
   updateLeaveRequestStatus,
 } from "../../services/leaveService";
 import LeaveStatusBadge from "../../components/leave/LeaveStatusBadge";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import RejectLeaveModal from "../../components/leave/RejectLeaveModal";
+import type { UpdateLeaveRequestStatusDto } from "../../types/leave";
 import { useAuth } from "../../context/AuthContext";
 import { Permission } from "../../lib/permissions";
 
@@ -30,8 +34,10 @@ export default function LeaveDetailPage() {
 
   const [actioning, setActioning] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Which request was just approved here (the page is reused across requests).
-  const [approvedId, setApprovedId] = useState<number | null>(null);
+  // The last action taken here, per request (the page is reused across requests).
+  const [done, setDone] = useState<{ id: number; status: UpdateLeaveRequestStatusDto["status"] } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
 
   const {
     data: request,
@@ -44,20 +50,33 @@ export default function LeaveDetailPage() {
   );
   const error = actionError ?? loadError;
 
-  async function handleApprove() {
+  async function act(status: UpdateLeaveRequestStatusDto["status"], note?: string) {
     setActioning(true);
     setActionError(null);
     try {
-      // Show the approved request right away; going "back" could land on a
+      // Show the updated request right away; going "back" could land on a
       // stale copy of this page (e.g. when opened from the notification bell).
-      setData(await updateLeaveRequestStatus(requestId, { status: "Approved" }));
-      setApprovedId(requestId);
+      setData(await updateLeaveRequestStatus(requestId, { status, note: note?.trim() || undefined }));
+      setDone({ id: requestId, status });
     } catch (err) {
-      setActionError(getErrorMessage(err, "Failed to approve request."));
+      setActionError(
+        getErrorMessage(
+          err,
+          status === "Cancel"
+            ? "Failed to cancel the leave."
+            : status === "Reject"
+              ? "Failed to reject request."
+              : "Failed to approve request.",
+        ),
+      );
     } finally {
       setActioning(false);
+      setConfirmCancel(false);
+      setRejecting(false);
     }
   }
+
+  const canAct = hasPermission(Permission.UpdateLeave);
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -82,10 +101,14 @@ export default function LeaveDetailPage() {
         </div>
       ) : request ? (
         <>
-        {approvedId === request.id && (
+        {done?.id === request.id && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
             <Check size={16} className="text-emerald-600 dark:text-emerald-400" />
-            Leave request approved. {request.userName}'s attendance has been updated.
+            {done.status === "Cancel"
+              ? `Leave cancelled. ${request.userName}'s days are back to normal attendance.`
+              : done.status === "Reject"
+                ? `Leave request rejected. ${request.userName} is expected at work on these days.`
+                : `Leave request approved. ${request.userName}'s attendance has been updated.`}
           </div>
         )}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-line dark:bg-surface">
@@ -164,25 +187,63 @@ export default function LeaveDetailPage() {
               <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-subtle dark:text-zinc-300">
                 <ShieldCheck size={16} className="text-emerald-600" />
                 <span>
-                  Approved by: <strong>{request.approverName}</strong>
+                  {request.status === "Reject" ? "Rejected" : request.status === "Cancel" ? "Cancelled" : "Approved"} by:{" "}
+                  <strong>{request.approverName}</strong>
                 </span>
               </div>
             )}
           </div>
 
-          {request.status === "Pending" &&
-            hasPermission(Permission.UpdateLeave) && (
+          {canAct && (request.status === "Pending" || request.status === "Approved") && (
             <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-line dark:bg-surface/50">
-              <button
-                disabled={actioning}
-                onClick={handleApprove}
-                className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                <Check size={16} /> Approve Request
-              </button>
+              {request.status === "Pending" ? (
+                <>
+                  <button
+                    disabled={actioning}
+                    onClick={() => setRejecting(true)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:bg-transparent dark:text-rose-400 dark:hover:bg-rose-950/40"
+                  >
+                    <XCircle size={16} /> Reject
+                  </button>
+                  <button
+                    disabled={actioning}
+                    onClick={() => act("Approved")}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <Check size={16} /> Approve Request
+                  </button>
+                </>
+              ) : (
+                <button
+                  disabled={actioning}
+                  onClick={() => setConfirmCancel(true)}
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:bg-transparent dark:text-rose-400 dark:hover:bg-rose-950/40"
+                >
+                  <XCircle size={16} /> Cancel Leave
+                </button>
+              )}
             </div>
           )}
         </div>
+        {rejecting && (
+          <RejectLeaveModal
+            request={request}
+            onClose={() => setRejecting(false)}
+            onConfirm={(note) => act("Reject", note)}
+            submitting={actioning}
+          />
+        )}
+        {confirmCancel && (
+          <ConfirmDialog
+            title="Cancel approved leave"
+            message={`Cancel ${request.userName}'s ${request.leaveType} leave (${request.startDate} → ${request.endDate})? Past days without a clock-in will count as absent.`}
+            confirmLabel="Cancel leave"
+            busyLabel="Cancelling..."
+            busy={actioning}
+            onConfirm={() => act("Cancel")}
+            onCancel={() => setConfirmCancel(false)}
+          />
+        )}
         </>
       ) : null}
     </div>

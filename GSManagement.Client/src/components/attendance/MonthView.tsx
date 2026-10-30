@@ -285,8 +285,11 @@ function FlaggedDays({
   selected: string | null;
   onSelect: (date: string) => void;
 }) {
+  const today = todayKey();
+  // A past half day with no clock-in: the working half was missed (counts 0.5 absent).
+  const missedHalf = (d: SummaryDay) => d.status === "HalfDay" && !d.checkInTime && d.date < today;
   const flagged = days.filter(
-    (d) => d.status === "Absent" || d.status === "Late" || d.earlyLeaveMinutes > 0 || d.missedClockOut,
+    (d) => d.status === "Absent" || d.status === "Late" || d.earlyLeaveMinutes > 0 || d.missedClockOut || missedHalf(d),
   );
 
   if (flagged.length === 0) {
@@ -311,6 +314,8 @@ function FlaggedDays({
             <span className="font-medium">{shortLabel(d.date)}</span>
             {d.status === "Absent" || d.status === "Late" ? (
               <StatusBadge status={d.status} />
+            ) : missedHalf(d) ? (
+              <span className="font-semibold text-rose-600 dark:text-rose-400">Missed working half</span>
             ) : (
               <span className={`font-semibold ${flag ? FLAG_TONE[flag.tone] : ""}`}>{flag?.label}</span>
             )}

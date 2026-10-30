@@ -2,6 +2,7 @@ using GSManagement.Domain.DB;
 using GSManagement.Domain.Entities;
 using GSManagement.Domain.Entities.Enums;
 using Microsoft.EntityFrameworkCore;
+using GSManagement.Api.Shared.Utils;
 
 namespace GSManagement.Api.Extentions;
 
@@ -159,7 +160,7 @@ public static class DatabaseSeeder
                 new Attendance
                 {
                     UserId = chhunleang.Id,
-                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Date = AppClock.Today,
                     CheckInTime = new TimeOnly(8, 0),
                     Status = AttendanceStatus.Present,
                     Remark = "Late"
@@ -167,7 +168,7 @@ public static class DatabaseSeeder
                 new Attendance
                 {
                     UserId = henglay.Id,
-                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Date = AppClock.Today,
                     CheckInTime = new TimeOnly(8, 0),
                     CheckOutTime = new TimeOnly(16, 0),
                     Status = AttendanceStatus.Present,
@@ -176,21 +177,21 @@ public static class DatabaseSeeder
                 new Attendance
                 {
                     UserId = thnin.Id,
-                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Date = AppClock.Today,
                     Status = AttendanceStatus.OnLeave,
                     Remark = "On Leave"
                 },
                 new Attendance
                 {
                     UserId = lycheng.Id,
-                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Date = AppClock.Today,
                     Status = AttendanceStatus.Absent,
                     Remark = "Absent Not Inform"
                 },
                 new Attendance
                 {
                     UserId = helen.Id,
-                    Date = DateOnly.FromDateTime(DateTime.Now),
+                    Date = AppClock.Today,
                     CheckInTime = new TimeOnly(8, 26),
                     CheckOutTime = new TimeOnly(16, 0),
                     Status = AttendanceStatus.Late,

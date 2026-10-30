@@ -57,7 +57,8 @@ public record SummaryTotalsDto(
     int OnTimeDays,
     int LateDays,
     int LateMinutes,
-    int AbsentDays,
+    // Includes 0.5 for the missed working half of a half day.
+    double AbsentDays,
     double LeaveDays,
     int HalfDays,
     int EarlyLeaveDays,

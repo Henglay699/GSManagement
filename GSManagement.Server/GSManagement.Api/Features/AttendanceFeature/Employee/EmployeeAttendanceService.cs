@@ -13,11 +13,11 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
 {
     private readonly GSDbContext _context = context;
 
-    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+    private static DateOnly Today => AppClock.Today;
 
     public async Task<ClockResultDto> ClockInAsync(int userId)
     {
-        var now = TimeOnly.FromDateTime(DateTime.Now);
+        var now = AppClock.TimeOfDay;
         var (holiday, shift) = await DayContextAsync();
         if (Today.DayOfWeek == DayOfWeek.Sunday)
             throw new InvalidOperationException("Today is a day off (Sunday).");
@@ -51,7 +51,16 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
         attendance.CheckInTime = now;
         attendance.ShiftId ??= shift?.Id;
         AttendanceRules.Apply(attendance, shift);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException) when (_context.Entry(attendance).State == EntityState.Added)
+        {
+            // A second clock-in (e.g. a double click) raced this one; the unique
+            // (UserId, Date) index kept only the first.
+            throw new InvalidOperationException("You already clocked in today.");
+        }
 
         var today = await GetTodayAsync(userId);
         var message = today.LateMinutes > 0
@@ -62,7 +71,7 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
 
     public async Task<ClockResultDto> ClockOutAsync(int userId)
     {
-        var now = TimeOnly.FromDateTime(DateTime.Now);
+        var now = AppClock.TimeOfDay;
         var (_, defaultShift) = await DayContextAsync();
         var attendance = await _context.Attendances
             .Include(a => a.Shift)

@@ -65,8 +65,8 @@ public class LeaveRequestController(ILeaveRequestService leaveRequestService, Le
     [HasPermission(AppPermission.UpdateLeave)]
     public async Task<ActionResult<LeaveRequestDto>> UpdateStatus(int id, [FromBody] UpdateLeaveRequestStatusDto dto)
     {
-        if (dto.Status is not (LeaveStatus.Approved or LeaveStatus.Reject))
-            return BadRequest(new { message = "Status must be Approved or Reject." });
+        if (dto.Status is not (LeaveStatus.Approved or LeaveStatus.Reject or LeaveStatus.Cancel))
+            return BadRequest(new { message = "Status must be Approved, Reject or Cancel." });
 
         try
         {

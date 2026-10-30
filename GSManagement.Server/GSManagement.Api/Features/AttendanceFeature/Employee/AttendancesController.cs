@@ -3,6 +3,7 @@ using GSManagement.Api.Features.AttendanceFeature.Employee.DTOs;
 using GSManagement.Api.Features.AttendanceFeature.Summary;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using GSManagement.Api.Shared.Utils;
 
 namespace GSManagement.Api.Features.AttendanceFeature.Employee;
 
@@ -55,8 +56,8 @@ public class AttendancesController(
     [HttpGet("summary")]
     public async Task<ActionResult<MonthSummaryDto>> GetSummary([FromQuery] int? year, [FromQuery] int? month)
     {
-        var y = year ?? DateTime.Today.Year;
-        var m = month ?? DateTime.Today.Month;
+        var y = year ?? AppClock.Today.Year;
+        var m = month ?? AppClock.Today.Month;
         if (m is < 1 or > 12)
             return BadRequest(new { message = "Month must be between 1 and 12." });
         var result = await _summaryService.GetForUserAsync(CurrentUserId, y, m);

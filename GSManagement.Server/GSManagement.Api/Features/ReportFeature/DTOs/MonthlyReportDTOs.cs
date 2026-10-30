@@ -9,7 +9,7 @@ public record MonthlyReportTotalsDto(
     int Employees,
     int PresentDays,
     int LateDays,
-    int AbsentDays,
+    double AbsentDays,
     double LeaveDays,
     int EarlyLeaveDays,
     int MissedClockOuts,

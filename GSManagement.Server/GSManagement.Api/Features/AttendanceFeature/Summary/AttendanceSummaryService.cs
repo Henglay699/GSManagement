@@ -30,7 +30,7 @@ public class AttendanceSummaryService(GSDbContext context)
     {
         var monthStart = new DateOnly(year, month, 1);
         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = AppClock.Today;
         var periodEnd = monthEnd < today ? monthEnd : today;
 
         var holidays = (await PublicHolidaysHelper.GetHolidaysAsync(year))
@@ -72,9 +72,11 @@ public class AttendanceSummaryService(GSDbContext context)
             var mine = byUser[user.Id].ToDictionary(r => r.Date);
             var days = new List<SummaryDayDto>();
             var leaveByType = LeaveTypes.ToDictionary(t => t, _ => 0d);
-            int workingDays = 0, present = 0, onTime = 0, late = 0, lateMin = 0, absent = 0,
+            int workingDays = 0, present = 0, onTime = 0, late = 0, lateMin = 0,
                 halfDays = 0, earlyDays = 0, missed = 0, workedMin = 0, otMin = 0;
             double leaveDays = 0;
+            // A missed working half of a half day counts 0.5.
+            double absent = 0;
             // Days actually attended, for the attendance rate: a worked half day counts 0.5.
             double attended = 0;
 
@@ -96,9 +98,15 @@ public class AttendanceSummaryService(GSDbContext context)
                         _ => DayStatus.Present
                     };
 
-                    var worked = r.CheckInTime is { } i && r.CheckOutTime is { } o && o > i
-                        ? (int)(o - i).TotalMinutes : 0;
-                    var ot = (int)(r.OvertimeMinutes ?? 0);
+                    var worked = AttendanceRules.WorkedMinutes(r.CheckInTime, r.CheckOutTime);
+                    var dayShift = r.Shift ?? defaultShift;
+                    var window = AttendanceRules.ExpectedWindow(
+                        dayShift, r.Status == AttendanceStatus.HalfDay || r.IsHalfDay, r.HalfDayPeriod);
+                    // Recomputed from the clock times (not the stored value) so older
+                    // records follow the current overtime rule too.
+                    var ot = r.Status == AttendanceStatus.OnLeave ? 0 : AttendanceRules.OvertimeMinutes(
+                        r.CheckInTime, r.CheckOutTime, window.Start, window.End,
+                        dayShift?.EndTime ?? AttendanceRules.DefaultEnd);
 
                     switch (r.Status)
                     {
@@ -121,6 +129,11 @@ public class AttendanceSummaryService(GSDbContext context)
                                 if (r.LateMinutes > 0) { late++; lateMin += r.LateMinutes; }
                                 else onTime++;
                             }
+                            else if (d < today)
+                            {
+                                // The day is over and the working half was never clocked in.
+                                absent += 0.5;
+                            }
                             break;
                     }
                     if (r.EarlyLeaveMinutes > 0) earlyDays++;
@@ -128,8 +141,6 @@ public class AttendanceSummaryService(GSDbContext context)
                     workedMin += worked;
                     otMin += ot;
 
-                    var window = AttendanceRules.ExpectedWindow(
-                        r.Shift ?? defaultShift, r.Status == AttendanceStatus.HalfDay || r.IsHalfDay, r.HalfDayPeriod);
                     var hours = r.Status == AttendanceStatus.OnLeave ? ((TimeOnly?)null, (TimeOnly?)null)
                         : ((TimeOnly?)window.Start, (TimeOnly?)window.End);
 

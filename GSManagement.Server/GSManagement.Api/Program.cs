@@ -2,11 +2,15 @@ using GSManagement.Api.Extentions;
 using GSManagement.Api.Hubs;
 using GSManagement.Api.Shared.Email;
 using GSManagement.Api.Shared.Storage;
+using GSManagement.Api.Shared.Utils;
 using GSManagement.Domain.DB;
 using JwtTest.Middlewares.CSRF;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Attendance runs on company time, not the server's timezone.
+AppClock.Configure(builder.Configuration["App:TimeZone"]);
     
 // Add services to the container.
 builder.Services.AddControllers(options =>

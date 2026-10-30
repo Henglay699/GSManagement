@@ -6,6 +6,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAsync } from "../../hooks/useAsync";
+import { todayKey } from "../../utils/dateTimeFormatter";
 import { getErrorMessage } from "../../lib/api";
 import {
   cancelMyLeaveRequest,
@@ -156,7 +157,8 @@ export default function MyLeavePage() {
                     {lr.remark || "--"}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    {lr.status === "Pending" && (
+                    {(lr.status === "Pending" ||
+                      (lr.status === "Approved" && lr.startDate.slice(0, 10) > todayKey())) && (
                       <button
                         onClick={() => setToCancel(lr)}
                         className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
@@ -208,8 +210,12 @@ export default function MyLeavePage() {
 
       {toCancel && (
         <ConfirmDialog
-          title="Cancel leave request"
-          message={`Withdraw your ${toCancel.leaveType} leave request starting ${toCancel.startDate}?`}
+          title={toCancel.status === "Approved" ? "Cancel approved leave" : "Cancel leave request"}
+          message={
+            toCancel.status === "Approved"
+              ? `Cancel your approved ${toCancel.leaveType} leave starting ${toCancel.startDate}? You'll be expected at work on those days.`
+              : `Withdraw your ${toCancel.leaveType} leave request starting ${toCancel.startDate}?`
+          }
           confirmLabel="Cancel request"
           busyLabel="Cancelling..."
           busy={cancelling}

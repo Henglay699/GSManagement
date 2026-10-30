@@ -51,7 +51,8 @@ export interface UpdateLeaveRequestDto {
 }
 
 export interface UpdateLeaveRequestStatusDto {
-  status: Extract<LeaveStatus, "Approved" | "Reject">;
+  // Cancel works on pending and approved requests (approved leave is withdrawn).
+  status: Extract<LeaveStatus, "Approved" | "Reject" | "Cancel">;
   note?: string;
 }
 

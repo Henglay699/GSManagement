@@ -31,6 +31,32 @@ public static class AttendanceRules
             ? AfternoonStart
             : EarliestClockIn;
 
+    /// <summary>
+    /// Minutes actually worked between clock-in and clock-out, leaving out the
+    /// lunch hour (12:00–13:00) for whatever part of it the span covers.
+    /// </summary>
+    public static int WorkedMinutes(TimeOnly? checkIn, TimeOnly? checkOut)
+    {
+        if (checkIn is not { } i || checkOut is not { } o || o <= i) return 0;
+        var lunchFrom = i > MorningEnd ? i : MorningEnd;
+        var lunchTo = o < AfternoonStart ? o : AfternoonStart;
+        var lunch = lunchTo > lunchFrom ? (lunchTo - lunchFrom).TotalMinutes : 0;
+        return (int)((o - i).TotalMinutes - lunch);
+    }
+
+    /// <summary>
+    /// Overtime is time after the shift end that goes beyond the day's expected
+    /// span, so arriving late and staying late only makes up the lost time:
+    /// 08:00–18:00 = 60 min, 08:30–18:00 = 30 min, 11:00–18:00 = 0.
+    /// </summary>
+    public static int OvertimeMinutes(TimeOnly? checkIn, TimeOnly? checkOut, TimeOnly start, TimeOnly end, TimeOnly shiftEnd)
+    {
+        if (checkIn is not { } i || checkOut is not { } o || o <= shiftEnd) return 0;
+        var beyondShift = (o - shiftEnd).TotalMinutes;
+        var beyondExpected = (o - i).TotalMinutes - (end - start).TotalMinutes;
+        return (int)Math.Max(0, Math.Round(Math.Min(beyondShift, beyondExpected)));
+    }
+
     /// <summary>When the employee is expected to start and finish that day.</summary>
     public static (TimeOnly Start, TimeOnly End, int Grace) ExpectedWindow(Shift? shift, Attendance a) =>
         ExpectedWindow(shift, a.Status == AttendanceStatus.HalfDay || a.IsHalfDay, a.HalfDayPeriod);
@@ -83,9 +109,7 @@ public static class AttendanceRules
             ? (int)(end - outTime).TotalMinutes
             : 0;
 
-        a.OvertimeMinutes = a.CheckOutTime is { } o && o > shiftEnd
-            ? Math.Round((o - shiftEnd).TotalMinutes, 0)
-            : 0;
+        a.OvertimeMinutes = OvertimeMinutes(a.CheckInTime, a.CheckOutTime, start, end, shiftEnd);
 
         if (a.CheckOutTime is not null) a.MissedClockOut = false;
 

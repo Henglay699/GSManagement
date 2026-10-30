@@ -127,7 +127,9 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
 
         if (dto.MarkAbsent)
         {
-            a.Status = AttendanceStatus.Absent;
+            // A half day stays half-day leave: only its working half was missed,
+            // which the summary counts as 0.5 absent.
+            if (a.Status != AttendanceStatus.HalfDay) a.Status = AttendanceStatus.Absent;
             a.CheckInTime = null;
             a.CheckOutTime = null;
         }
@@ -145,7 +147,7 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
     private async Task ValidateDayAsync(SaveAttendanceDto dto)
     {
         ValidateTimes(dto);
-        if (dto.Date > DateOnly.FromDateTime(DateTime.Today))
+        if (dto.Date > AppClock.Today)
             throw new InvalidOperationException("Attendance can't be recorded for a future date.");
         if (dto.Date.DayOfWeek == DayOfWeek.Sunday)
             throw new InvalidOperationException("Sunday is a day off.");

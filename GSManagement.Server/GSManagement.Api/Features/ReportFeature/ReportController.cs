@@ -4,6 +4,7 @@ using GSManagement.Domain.Entities.Enums;
 using JwtTest.Middlewares.CheckPermission;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using GSManagement.Api.Shared.Utils;
 
 namespace GSManagement.Api.Features.ReportFeature;
 
@@ -61,8 +62,8 @@ public class ReportController(ReportService reportService, AttendanceSummaryServ
 
     private static bool TryResolve(int? year, int? month, out int y, out int m)
     {
-        y = year ?? DateTime.Today.Year;
-        m = month ?? DateTime.Today.Month;
+        y = year ?? AppClock.Today.Year;
+        m = month ?? AppClock.Today.Month;
         return m is >= 1 and <= 12 && y is >= 2000 and <= 2100;
     }
 }

@@ -3,6 +3,7 @@ using GSManagement.Domain.Entities.Enums;
 using JwtTest.Middlewares.CheckPermission;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using GSManagement.Api.Shared.Utils;
 
 namespace GSManagement.Api.Features.AttendanceFeature.Admin;
 
@@ -19,14 +20,14 @@ public class AttendanceController(IAttendanceService attendanceService) : Contro
     [HasPermission(AppPermission.ViewAttendance)]
     public async Task<ActionResult<DailyAttendanceDto>> GetDaily([FromQuery] DateOnly? date)
     {
-        return Ok(await _attendanceService.GetDailyAsync(date ?? DateOnly.FromDateTime(DateTime.Today)));
+        return Ok(await _attendanceService.GetDailyAsync(date ?? AppClock.Today));
     }
 
     [HttpGet("weekly")]
     [HasPermission(AppPermission.ViewAttendance)]
     public async Task<ActionResult<WeeklyAttendanceDto>> GetWeekly([FromQuery] DateOnly? date)
     {
-        return Ok(await _attendanceService.GetWeeklyAsync(date ?? DateOnly.FromDateTime(DateTime.Today)));
+        return Ok(await _attendanceService.GetWeeklyAsync(date ?? AppClock.Today));
     }
 
     [HttpGet("{id:int}")]

@@ -6,6 +6,7 @@ import { getErrorMessage } from "../../lib/api";
 import { paths } from "../../lib/paths";
 import { fetchLeaveRequests } from "../../services/leaveService";
 import type { LeaveRequestDto } from "../../types/leave";
+import { todayKey } from "../../utils/dateTimeFormatter";
 import Avatar from "../ui/Avatar";
 
 const MAX_ITEMS = 8;
@@ -13,13 +14,14 @@ const MAX_ITEMS = 8;
 const fmtDay = (iso: string) =>
   new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
+// Requests store only the date they were submitted (company time), so this
+// counts days, not hours.
 function timeAgo(iso: string) {
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
+  const days = Math.round(
+    (new Date(`${todayKey()}T00:00:00`).getTime() - new Date(`${iso.slice(0, 10)}T00:00:00`).getTime()) / 86_400_000,
+  );
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
   return days < 7 ? `${days}d ago` : fmtDay(iso);
 }
 

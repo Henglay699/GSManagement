@@ -35,6 +35,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         var overlaps = await _context.LeaveRequests.AnyAsync(lr =>
             lr.UserId == dto.UserId &&
             lr.Status != LeaveStatus.Cancel &&
+            lr.Status != LeaveStatus.Reject &&
             lr.StartDate <= dto.EndDate &&
             lr.EndDate >= dto.StartDate);
 
@@ -44,27 +45,11 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         // Check if employee already has attendance records (clocked in / worked) on these dates
         await ValidateNoConflictingAttendanceAsync(dto.UserId, dto.StartDate, dto.EndDate, dto.IsHalfDay, dto.HalfDayPeriod);
 
-        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.StartDate.Year);
-        if (dto.EndDate.Year != dto.StartDate.Year)
-        {
-            var nextYearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.EndDate.Year);
-            holidays.AddRange(nextYearHolidays);
-        }
-
-        var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
-
-        for (var date = dto.StartDate; date <= dto.EndDate; date = date.AddDays(1))
-        {
-            if (holidayDates.Contains(date))
-            {
-                var holidayInfo = holidays.First(h => DateOnly.FromDateTime(h.Date) == date);
-                throw new InvalidOperationException(
-                    $"Cannot create leave request. {date:yyyy-MM-dd} is a public holiday ({holidayInfo.EnglishName}).");
-            }
-        }
-
-        if (CountWorkingDays(dto.StartDate, dto.EndDate) == 0)
-            throw new InvalidOperationException("This date range only covers Sunday, which is already a day off - no leave request is needed.");
+        // Sundays and public holidays inside the range are simply not leave days.
+        var holidayDates = await HolidayDatesAsync(dto.StartDate, dto.EndDate);
+        if (CountWorkingDays(dto.StartDate, dto.EndDate, holidayDates) == 0)
+            throw new InvalidOperationException(
+                "These dates only cover Sundays and public holidays, which are already days off - no leave request is needed.");
 
         var entity = new LeaveRequest
         {
@@ -74,7 +59,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             EndDate = dto.EndDate,
             Remark = dto.Remark,
             Status = dto.InitialStatus,
-            CreatedAt = DateOnly.FromDateTime(DateTime.UtcNow),
+            CreatedAt = AppClock.Today,
             IsHalfDay = dto.IsHalfDay,
             HalfDayPeriod = dto.IsHalfDay ? dto.HalfDayPeriod : null,
         };
@@ -130,10 +115,13 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .Skip((filter.PageNumber - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .ToListAsync();
+        var holidays = items.Count == 0
+            ? []
+            : await HolidayDatesAsync(items.Min(lr => lr.StartDate), items.Max(lr => lr.EndDate));
 
         return new PagedResult<LeaveRequestDto>
         {
-            Items = items.ConvertAll(Map),
+            Items = items.ConvertAll(e => Map(e, holidays)),
             TotalCount = totalCount,
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize,
@@ -147,7 +135,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .Include(lr => lr.Approver)
             .FirstOrDefaultAsync(lr => lr.Id == id);
 
-        return entity is null ? null : Map(entity);
+        return entity is null ? null : Map(entity, await HolidayDatesAsync(entity.StartDate, entity.EndDate));
     }
 
     public async Task<LeaveRequestDto> UpdateStatusAsync(int id, UpdateLeaveRequestStatusDto dto, int actionedByUserId)
@@ -157,14 +145,20 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .FirstOrDefaultAsync(lr => lr.Id == id)
             ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
 
-        if (entity.Status != LeaveStatus.Pending)
+        // Approve or reject a pending request; cancel a pending or an approved one
+        // (approved leave is withdrawn and its days go back to normal attendance).
+        var allowed = dto.Status switch
         {
-            throw new InvalidOperationException(
-                $"Only pending requests can be actioned. This request is already '{entity.Status}'.");
+            LeaveStatus.Approved or LeaveStatus.Reject => entity.Status == LeaveStatus.Pending,
+            LeaveStatus.Cancel => entity.Status is LeaveStatus.Pending or LeaveStatus.Approved,
+            _ => false,
+        };
+        if (!allowed)
+        {
+            throw new InvalidOperationException(dto.Status == LeaveStatus.Cancel
+                ? $"Only pending or approved requests can be cancelled. This request is already '{entity.Status}'."
+                : $"Only pending requests can be approved or rejected. This request is already '{entity.Status}'.");
         }
-
-        if (dto.Status != LeaveStatus.Approved && dto.Status != LeaveStatus.Reject)
-            throw new InvalidOperationException("Status can only be changed to Approved or Reject here.");
 
         if (dto.Status == LeaveStatus.Approved)
         {
@@ -182,14 +176,12 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
                 : $"{entity.Remark}\n[{dto.Status}] {dto.Note}";
         }
 
-        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(entity.StartDate.Year);
-        var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
-
         if (dto.Status == LeaveStatus.Approved)
         {
+            var holidayDates = await HolidayDatesAsync(entity.StartDate, entity.EndDate);
             await SyncAttendanceForApprovedLeaveAsync(entity, holidayDates);
         }
-        else if (dto.Status == LeaveStatus.Reject)
+        else
         {
             await ReleaseAttendanceForLeaveAsync(id);
         }
@@ -205,11 +197,16 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .FirstOrDefaultAsync(lr => lr.Id == id && lr.UserId == userId)
             ?? throw new KeyNotFoundException($"Leave request {id} was not found.");
 
-        if (entity.Status != LeaveStatus.Pending)
-            throw new InvalidOperationException(
-                $"Only pending requests can be cancelled. This request is already '{entity.Status}'.");
+        var cancellable = entity.Status == LeaveStatus.Pending ||
+            (entity.Status == LeaveStatus.Approved && entity.StartDate > AppClock.Today);
+        if (!cancellable)
+            throw new InvalidOperationException(entity.Status == LeaveStatus.Approved
+                ? "This leave has already started. Ask HR to cancel it."
+                : $"Only pending requests, or approved leave that hasn't started, can be cancelled. This request is already '{entity.Status}'.");
 
+        var wasApproved = entity.Status == LeaveStatus.Approved;
         entity.Status = LeaveStatus.Cancel;
+        if (wasApproved) await ReleaseAttendanceForLeaveAsync(id);
         await _context.SaveChangesAsync();
         return await MapSavedAsync(entity);
     }
@@ -243,6 +240,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             lr.Id != id &&
             lr.UserId == dto.UserId &&
             lr.Status != LeaveStatus.Cancel &&
+            lr.Status != LeaveStatus.Reject &&
             lr.StartDate <= dto.EndDate &&
             lr.EndDate >= dto.StartDate);
 
@@ -252,27 +250,11 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         // Check if employee already has attendance records (clocked in / worked) on these dates
         await ValidateNoConflictingAttendanceAsync(dto.UserId, dto.StartDate, dto.EndDate, dto.IsHalfDay, dto.HalfDayPeriod, id);
 
-        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.StartDate.Year);
-        if (dto.EndDate.Year != dto.StartDate.Year)
-        {
-            var nextYearHolidays = await PublicHolidaysHelper.GetHolidaysAsync(dto.EndDate.Year);
-            holidays.AddRange(nextYearHolidays);
-        }
-
-        var holidayDates = holidays.Select(h => DateOnly.FromDateTime(h.Date)).ToHashSet();
-
-        for (var date = dto.StartDate; date <= dto.EndDate; date = date.AddDays(1))
-        {
-            if (holidayDates.Contains(date))
-            {
-                var holidayInfo = holidays.First(h => DateOnly.FromDateTime(h.Date) == date);
-                throw new InvalidOperationException(
-                    $"Cannot set leave request. {date:yyyy-MM-dd} is a public holiday ({holidayInfo.EnglishName}).");
-            }
-        }
-
-        if (CountWorkingDays(dto.StartDate, dto.EndDate) == 0)
-            throw new InvalidOperationException("This date range only covers Sunday, which is already a day off - no leave request is needed.");
+        // Sundays and public holidays inside the range are simply not leave days.
+        var holidayDates = await HolidayDatesAsync(dto.StartDate, dto.EndDate);
+        if (CountWorkingDays(dto.StartDate, dto.EndDate, holidayDates) == 0)
+            throw new InvalidOperationException(
+                "These dates only cover Sundays and public holidays, which are already days off - no leave request is needed.");
 
         // 1. Remove all existing attendance records synced to this leave request ID
         await ReleaseAttendanceForLeaveAsync(id);
@@ -385,7 +367,9 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
 
     /// <summary>
     /// Undoes a leave's effect on attendance: days the employee also worked
-    /// (half-day with a clock-in) go back to normal worked days; the rest are removed.
+    /// (half-day with a clock-in) go back to normal worked days; past days with
+    /// no clock-in become Absent (the nightly close-out skipped them because of
+    /// the leave); today and future days are removed.
     /// </summary>
     private async Task ReleaseAttendanceForLeaveAsync(int leaveRequestId)
     {
@@ -398,7 +382,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         var defaultShift = await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault);
         foreach (var a in records)
         {
-            if (a.CheckInTime is null)
+            if (a.CheckInTime is null && a.Date >= AppClock.Today)
             {
                 _context.Attendances.Remove(a);
                 continue;
@@ -406,7 +390,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             a.LeaveRequestId = null;
             a.IsHalfDay = false;
             a.HalfDayPeriod = null;
-            a.Status = AttendanceStatus.Present;
+            a.Status = a.CheckInTime is null ? AttendanceStatus.Absent : AttendanceStatus.Present;
             AttendanceRules.Apply(a, a.Shift ?? defaultShift);
         }
         await _context.SaveChangesAsync();
@@ -438,10 +422,10 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             approver.IsLoaded = false;
             await approver.LoadAsync();
         }
-        return Map(entity);
+        return Map(entity, await HolidayDatesAsync(entity.StartDate, entity.EndDate));
     }
 
-    private static LeaveRequestDto Map(LeaveRequest entity) => new()
+    private static LeaveRequestDto Map(LeaveRequest entity, HashSet<DateOnly> holidays) => new()
     {
         Id = entity.Id,
         UserId = entity.UserId,
@@ -450,7 +434,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         LeaveType = entity.LeaveType,
         StartDate = entity.StartDate,
         EndDate = entity.EndDate,
-        TotalDays = CountWorkingDays(entity.StartDate, entity.EndDate),
+        TotalDays = CountWorkingDays(entity.StartDate, entity.EndDate, holidays),
         Status = entity.Status,
         Remark = entity.Remark,
         CreatedAt = entity.CreatedAt,
@@ -459,13 +443,24 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         HalfDayPeriod = entity.HalfDayPeriod,
     };
 
-    private static int CountWorkingDays(DateOnly start, DateOnly end)
+    /// <summary>Leave days in a range: everything but Sundays and public holidays.</summary>
+    private static int CountWorkingDays(DateOnly start, DateOnly end, HashSet<DateOnly> holidays)
     {
         var count = 0;
         for (var date = start; date <= end; date = date.AddDays(1))
         {
-            if (date.DayOfWeek != DayOfWeek.Sunday) count++;
+            if (date.DayOfWeek != DayOfWeek.Sunday && !holidays.Contains(date)) count++;
         }
         return count;
+    }
+
+    /// <summary>Public holiday dates for every year the range touches.</summary>
+    private static async Task<HashSet<DateOnly>> HolidayDatesAsync(DateOnly from, DateOnly to)
+    {
+        var dates = new HashSet<DateOnly>();
+        for (var year = from.Year; year <= to.Year; year++)
+            foreach (var h in await PublicHolidaysHelper.GetHolidaysAsync(year))
+                dates.Add(DateOnly.FromDateTime(h.Date));
+        return dates;
     }
 }
