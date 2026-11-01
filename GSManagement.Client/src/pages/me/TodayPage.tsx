@@ -47,6 +47,11 @@ function phnomPenhMinutes(now: Date) {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+/** Today's date in Phnom Penh, "yyyy-mm-dd" like the server's dates. */
+function phnomPenhDate(now: Date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(now);
+}
+
 const RECENT: string[] = ["Present", "Late", "HalfDay", "OnLeave", "Absent"];
 
 // The employee's start page: greeting, the clock-in / clock-out punch,
@@ -85,12 +90,19 @@ export default function TodayPage() {
 
   const t = today.data;
   const nowMin = phnomPenhMinutes(now);
+  // Times on the shift's timeline: on an overnight shift the morning after
+  // counts on from 24:00, so 05:00 is 29:00 (the server checks the same way).
+  const pivot = t?.shift ? toMinutes(t.shift.startTime) - 60 : 0;
+  const onLine = (time: string) => toMinutes(time) + (t?.overnight && toMinutes(time) < pivot ? 1440 : 0);
+  const nowLine = nowMin + (t && t.date !== phnomPenhDate(now) ? 1440 : 0);
   // The server refuses early clock-ins too; this just keeps the button honest.
-  const tooEarly = !!t?.canClockIn && nowMin < toMinutes(t.clockInOpensAt);
+  const tooEarly = !!t?.canClockIn && nowLine < onLine(t.clockInOpensAt);
+  // Past the end of the shift: only HR can add the day now.
+  const tooLate = !!t?.canClockIn && nowLine >= onLine(t.clockInClosesAt);
   const hour = Math.floor(nowMin / 60);
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const working = t?.status === "InProgress";
-  const elapsed = working && t?.checkInTime ? Math.max(0, nowMin - toMinutes(t.checkInTime)) : 0;
+  const elapsed = working && t?.checkInTime ? Math.max(0, nowLine - onLine(t.checkInTime)) : 0;
   const clockedOut = !!t?.checkInTime && !!t?.checkOutTime;
   const m = month.data?.totals;
   const recent = (month.data?.days ?? []).filter((d) => RECENT.includes(d.status)).slice(-7).reverse();
@@ -161,8 +173,11 @@ export default function TodayPage() {
               </span>
               <h2 className="mt-0.5 text-xl font-bold text-slate-900 dark:text-zinc-100">Daily Clock In &amp; Out</h2>
               <p className="mt-1 text-xs text-slate-400 dark:text-zinc-500">
-                Record your attendance for today's shift. Clock-in opens at{" "}
-                {t ? fmtTime(t.clockInOpensAt) : "07:00"}.
+                Record your attendance for today's shift.
+                {t &&
+                  ` Clock-in is open from ${fmtTime(t.clockInOpensAt)} until ${fmtTime(t.clockInClosesAt)}${
+                    t.overnight ? " the next morning" : ""
+                  }.`}
               </p>
             </div>
             {t && (
@@ -190,7 +205,9 @@ export default function TodayPage() {
                       ? "On time"
                       : tooEarly
                         ? `Opens at ${fmtTime(t.clockInOpensAt)}`
-                        : "Not yet clocked in"
+                        : tooLate
+                          ? "Not clocked in, the shift has ended"
+                          : "Not yet clocked in"
                 }
                 noteTone={t.lateMinutes > 0 ? "warn" : undefined}
               />
@@ -255,7 +272,7 @@ export default function TodayPage() {
                 <>
                   <button
                     onClick={() => punch("in")}
-                    disabled={busy || tooEarly}
+                    disabled={busy || tooEarly || tooLate}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition-all hover:bg-emerald-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     {busy ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
@@ -264,6 +281,11 @@ export default function TodayPage() {
                   {tooEarly && (
                     <span className="text-[11px] text-slate-400 dark:text-zinc-500">
                       Clock-in opens at {fmtTime(t.clockInOpensAt)}
+                    </span>
+                  )}
+                  {tooLate && (
+                    <span className="text-[11px] text-slate-400 dark:text-zinc-500">
+                      Your shift ended at {fmtTime(t.clockInClosesAt)}. Ask HR to add today's record.
                     </span>
                   )}
                 </>
@@ -315,7 +337,10 @@ export default function TodayPage() {
                   value={t ? fmtTime(t.shift?.endTime ?? t.expectedEnd) : "–"}
                   valueClass="text-amber-600 dark:text-amber-400"
                 />
-                <Row label="Clock-in opens" value={t ? fmtTime(t.clockInOpensAt) : "–"} />
+                <Row
+                  label="Clock-in window"
+                  value={t ? `${fmtTime(t.clockInOpensAt)} – ${fmtTime(t.clockInClosesAt)}` : "–"}
+                />
               </div>
             </div>
           </div>

@@ -343,7 +343,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .ToListAsync();
 
         var existingByDate = existing.ToDictionary(a => a.Date);
-        var defaultShift = await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault);
+        var employeeShift = await EmployeeShifts.ForUserAsync(_context, leaveRequest.UserId);
 
         for (var date = leaveRequest.StartDate; date <= leaveRequest.EndDate; date = date.AddDays(1))
         {
@@ -359,9 +359,14 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             attendance.LeaveRequestId = leaveRequest.Id;
             attendance.IsHalfDay = leaveRequest.IsHalfDay;
             attendance.HalfDayPeriod = leaveRequest.HalfDayPeriod;
-            attendance.ShiftId ??= defaultShift?.Id;
+            // A day already worked keeps its shift; otherwise it takes the employee's.
+            if (attendance.CheckInTime is null || attendance.ShiftId is null)
+                attendance.ShiftId = employeeShift?.Id;
+            var dayShift = attendance.ShiftId == employeeShift?.Id
+                ? employeeShift
+                : await _context.Shifts.FindAsync(attendance.ShiftId);
             // Half-day keeps any clock times and is re-scored against the shorter window.
-            AttendanceRules.Apply(attendance, defaultShift);
+            AttendanceRules.Apply(attendance, dayShift);
         }
     }
 
@@ -379,7 +384,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             .ToListAsync();
         if (records.Count == 0) return;
 
-        var defaultShift = await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault);
+        var employeeShift = await EmployeeShifts.ForUserAsync(_context, records[0].UserId);
         foreach (var a in records)
         {
             if (a.CheckInTime is null && a.Date >= AppClock.Today)
@@ -391,7 +396,7 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
             a.IsHalfDay = false;
             a.HalfDayPeriod = null;
             a.Status = a.CheckInTime is null ? AttendanceStatus.Absent : AttendanceStatus.Present;
-            AttendanceRules.Apply(a, a.Shift ?? defaultShift);
+            AttendanceRules.Apply(a, a.Shift ?? employeeShift);
         }
         await _context.SaveChangesAsync();
     }
@@ -434,7 +439,8 @@ public class LeaveRequestService(GSDbContext context) : ILeaveRequestService
         LeaveType = entity.LeaveType,
         StartDate = entity.StartDate,
         EndDate = entity.EndDate,
-        TotalDays = CountWorkingDays(entity.StartDate, entity.EndDate, holidays),
+        // A half-day request is a single date, so it's worth half a day.
+        TotalDays = entity.IsHalfDay ? 0.5 : CountWorkingDays(entity.StartDate, entity.EndDate, holidays),
         Status = entity.Status,
         Remark = entity.Remark,
         CreatedAt = entity.CreatedAt,

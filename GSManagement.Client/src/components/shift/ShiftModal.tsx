@@ -47,8 +47,8 @@ export default function ShiftModal({
       setError("Start time and end time are required.");
       return;
     }
-    if (form.startTime >= form.endTime) {
-      setError("End time must be after start time.");
+    if (form.startTime === form.endTime) {
+      setError("The shift must end at a different time than it starts.");
       return;
     }
 
@@ -138,6 +138,13 @@ export default function ShiftModal({
             </div>
           </div>
 
+          {form.startTime && form.endTime && form.endTime < form.startTime && (
+            <p className="-mt-2 text-[11px] text-indigo-600 dark:text-indigo-400">
+              Overnight shift: it ends at {form.endTime} the next morning. Each night is recorded on the
+              day it starts.
+            </p>
+          )}
+
           <div>
             <label className={labelClass}>Late Grace Period (Minutes)</label>
             <input
@@ -160,6 +167,8 @@ export default function ShiftModal({
               <input
                 type="checkbox"
                 checked={form.isDefault}
+                // There is always a default: make another shift the default to move it.
+                disabled={!!shift?.isDefault}
                 onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 dark:border-zinc-600 focus:ring-indigo-500"
               />
@@ -169,7 +178,9 @@ export default function ShiftModal({
                   <span>Set as Default Company Shift</span>
                 </div>
                 <p className="text-[11px] text-fg-3 dark:text-white0">
-                  Automatically applied to all employee daily clock-in / clock-out records.
+                  {shift?.isDefault
+                    ? "This is the default. To change it, make another shift the default."
+                    : "Employees without a shift of their own work this one."}
                 </p>
               </div>
             </label>

@@ -376,6 +376,9 @@ namespace GSManagement.Domain.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("int");
+
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -385,6 +388,8 @@ namespace GSManagement.Domain.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("ShiftId");
 
                     b.ToTable("Users");
                 });
@@ -478,6 +483,16 @@ namespace GSManagement.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GSManagement.Domain.Entities.User", b =>
+                {
+                    b.HasOne("GSManagement.Domain.Entities.Shift", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Shift");
                 });
 
             modelBuilder.Entity("GSManagement.Domain.Entities.User", b =>

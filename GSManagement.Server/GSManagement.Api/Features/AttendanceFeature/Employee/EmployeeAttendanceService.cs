@@ -18,28 +18,34 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
     public async Task<ClockResultDto> ClockInAsync(int userId)
     {
         var now = AppClock.TimeOfDay;
-        var (holiday, shift) = await DayContextAsync();
-        if (Today.DayOfWeek == DayOfWeek.Sunday)
+        var (date, shift) = await CurrentShiftDayAsync(userId);
+        var holiday = await HolidayOnAsync(date);
+        if (date.DayOfWeek == DayOfWeek.Sunday)
             throw new InvalidOperationException("Today is a day off (Sunday).");
         if (holiday is not null)
             throw new InvalidOperationException($"Today is a public holiday ({holiday}).");
         var attendance = await _context.Attendances
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == Today);
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == date);
 
         if (attendance?.Status == AttendanceStatus.OnLeave)
             throw new InvalidOperationException("You have approved full-day leave today.");
         if (attendance?.CheckInTime is { } already)
-            throw new InvalidOperationException($"You already clocked in today at {already:HH:mm}.");
+            throw new InvalidOperationException($"You already clocked in for this shift at {already:HH:mm}.");
 
-        var opensAt = AttendanceRules.ClockInOpensAt(attendance);
-        if (now < opensAt)
-            throw new InvalidOperationException(opensAt == AttendanceRules.EarliestClockIn
-                ? $"Clock-in opens at {opensAt:HH:mm}."
-                : $"You're on half-day leave this morning. Clock-in opens at {opensAt:HH:mm}.");
+        if (AttendanceRules.BeforeClockInOpens(now, date < Today, shift, attendance))
+        {
+            var opensAt = AttendanceRules.ClockInOpensAt(shift, attendance);
+            throw new InvalidOperationException(attendance?.HalfDayPeriod == HalfDayPeriod.Morning
+                ? $"You're on half-day leave for the first half. Clock-in opens at {opensAt:HH:mm}."
+                : $"Clock-in for your shift opens at {opensAt:HH:mm}.");
+        }
+        if (AttendanceRules.AfterClockInCloses(now, date < Today, shift, attendance))
+            throw new InvalidOperationException(
+                $"Your shift ended at {AttendanceRules.ClockInClosesAt(shift, attendance):HH:mm}, so clock-in is closed. Ask HR to add the record.");
 
         if (attendance is null)
         {
-            attendance = new Attendance { UserId = userId, Date = Today, Status = AttendanceStatus.Present };
+            attendance = new Attendance { UserId = userId, Date = date, Status = AttendanceStatus.Present };
             _context.Attendances.Add(attendance);
         }
         else if (attendance.Status == AttendanceStatus.Absent)
@@ -49,7 +55,8 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
         }
 
         attendance.CheckInTime = now;
-        attendance.ShiftId ??= shift?.Id;
+        // The day is scored against the shift the employee works now.
+        attendance.ShiftId = shift?.Id;
         AttendanceRules.Apply(attendance, shift);
         try
         {
@@ -59,31 +66,31 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
         {
             // A second clock-in (e.g. a double click) raced this one; the unique
             // (UserId, Date) index kept only the first.
-            throw new InvalidOperationException("You already clocked in today.");
+            throw new InvalidOperationException("You already clocked in for this shift.");
         }
 
         var today = await GetTodayAsync(userId);
         var message = today.LateMinutes > 0
             ? $"Clocked in at {now:HH:mm}, {today.LateMinutes} min late."
-            : $"Clocked in at {now:HH:mm}. Have a good day!";
+            : $"Clocked in at {now:HH:mm}. Have a good shift!";
         return new ClockResultDto(today, message);
     }
 
     public async Task<ClockResultDto> ClockOutAsync(int userId)
     {
         var now = AppClock.TimeOfDay;
-        var (_, defaultShift) = await DayContextAsync();
+        var (date, _) = await CurrentShiftDayAsync(userId);
         var attendance = await _context.Attendances
             .Include(a => a.Shift)
-            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == Today);
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == date);
 
         if (attendance?.CheckInTime is null)
-            throw new InvalidOperationException("You have not clocked in today.");
+            throw new InvalidOperationException("You have not clocked in for this shift.");
         if (attendance.CheckOutTime is { } done)
-            throw new InvalidOperationException($"You already clocked out today at {done:HH:mm}.");
+            throw new InvalidOperationException($"You already clocked out at {done:HH:mm}.");
 
         attendance.CheckOutTime = now;
-        AttendanceRules.Apply(attendance, attendance.Shift ?? defaultShift);
+        AttendanceRules.Apply(attendance, attendance.Shift ?? await EmployeeShifts.ForUserAsync(_context, userId));
         await _context.SaveChangesAsync();
 
         var today = await GetTodayAsync(userId);
@@ -91,27 +98,28 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
             ? $"Clocked out at {now:HH:mm}, with {today.OvertimeMinutes} min overtime."
             : today.EarlyLeaveMinutes > 0
                 ? $"Clocked out at {now:HH:mm}, {today.EarlyLeaveMinutes} min before the end of your shift."
-                : $"Clocked out at {now:HH:mm}. See you tomorrow!";
+                : $"Clocked out at {now:HH:mm}. See you next shift!";
         return new ClockResultDto(today, message);
     }
 
     public async Task<EmployeeTodayDto> GetTodayAsync(int userId)
     {
-        var (holiday, defaultShift) = await DayContextAsync();
+        var (date, currentShift) = await CurrentShiftDayAsync(userId);
+        var holiday = await HolidayOnAsync(date);
         var a = await _context.Attendances
             .AsNoTracking()
             .Include(x => x.Shift)
             .Include(x => x.LeaveRequest)
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.Date == Today);
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Date == date);
 
-        var shift = a?.Shift ?? defaultShift;
+        // Once clocked in the day keeps the shift it was scored against;
+        // before that it follows the employee's current shift.
+        var shift = a?.CheckInTime is not null && a.Shift is not null ? a.Shift : currentShift;
         var window = a is null
-            ? (Start: shift?.StartTime ?? AttendanceRules.DefaultStart,
-               End: shift?.EndTime ?? AttendanceRules.DefaultEnd,
-               Grace: shift?.GraceMinutes ?? AttendanceRules.DefaultGraceMinutes)
+            ? AttendanceRules.ExpectedWindow(shift, false, null)
             : AttendanceRules.ExpectedWindow(shift, a);
 
-        var isDayOff = Today.DayOfWeek == DayOfWeek.Sunday;
+        var isDayOff = date.DayOfWeek == DayOfWeek.Sunday;
         var clockedInOnly = a?.CheckInTime is not null && a.CheckOutTime is null;
         var status = a?.Status switch
         {
@@ -127,11 +135,12 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
         var workday = !isDayOff && holiday is null && a?.Status != AttendanceStatus.OnLeave;
 
         return new EmployeeTodayDto(
-            Today,
+            date,
             status,
             CanClockIn: workday && a?.CheckInTime is null,
             CanClockOut: clockedInOnly,
-            AttendanceRules.ClockInOpensAt(a),
+            AttendanceRules.ClockInOpensAt(shift, a),
+            AttendanceRules.ClockInClosesAt(shift, a),
             a?.CheckInTime,
             a?.CheckOutTime,
             window.Start,
@@ -145,15 +154,39 @@ public class EmployeeAttendanceService(GSDbContext context) : IEmployeeAttendanc
             a?.HalfDayPeriod,
             shift is null
                 ? null
-                : new ShiftDto(shift.Id, shift.Name, shift.StartTime, shift.EndTime, shift.GraceMinutes, shift.IsDefault));
+                : new ShiftDto(shift.Id, shift.Name, shift.StartTime, shift.EndTime, shift.GraceMinutes, shift.IsDefault),
+            AttendanceRules.IsOvernight(shift));
     }
 
-    private async Task<(string? Holiday, Shift? DefaultShift)> DayContextAsync()
+    /// <summary>
+    /// The date of the shift the employee is on right now. On an overnight shift
+    /// the small hours belong to the shift that started yesterday: until it ends,
+    /// or until its clock-out while it's still clocked in. Otherwise today.
+    /// </summary>
+    private async Task<(DateOnly Date, Shift? Shift)> CurrentShiftDayAsync(int userId)
     {
-        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(Today.Year);
-        var holiday = holidays.FirstOrDefault(h => DateOnly.FromDateTime(h.Date) == Today);
-        var shift = await _context.Shifts.AsNoTracking().FirstOrDefaultAsync(s => s.IsDefault)
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync();
-        return (holiday?.EnglishName ?? holiday?.KhmerName, shift);
+        var now = AppClock.TimeOfDay;
+        var yesterday = Today.AddDays(-1);
+        var shift = await EmployeeShifts.ForUserAsync(_context, userId);
+
+        var open = await _context.Attendances
+            .AsNoTracking()
+            .Include(a => a.Shift)
+            .FirstOrDefaultAsync(a => a.UserId == userId && a.Date == yesterday
+                && a.CheckInTime != null && a.CheckOutTime == null);
+        if (open is not null && AttendanceRules.IsPreviousShiftDay(now, open.Shift ?? shift))
+            return (yesterday, open.Shift ?? shift);
+
+        if (AttendanceRules.IsPreviousShiftDay(now, shift) && AppClock.Now < AttendanceRules.ShiftEndsAt(yesterday, shift))
+            return (yesterday, shift);
+
+        return (Today, shift);
+    }
+
+    private static async Task<string?> HolidayOnAsync(DateOnly date)
+    {
+        var holidays = await PublicHolidaysHelper.GetHolidaysAsync(date.Year);
+        var holiday = holidays.FirstOrDefault(h => DateOnly.FromDateTime(h.Date) == date);
+        return holiday?.EnglishName ?? holiday?.KhmerName;
     }
 }

@@ -27,6 +27,12 @@ builder.HasMany(u => u.Roles)
            j => j.ToTable("UserRoles")
        );
 
+        // Deleting a shift moves its employees back to the default shift.
+        builder.HasOne(u => u.Shift)
+               .WithMany()
+               .HasForeignKey(u => u.ShiftId)
+               .OnDelete(DeleteBehavior.SetNull);
+
         // user-refreshtoken
         builder.HasMany(u => u.RefreshTokens)
                .WithOne(rt => rt.User)

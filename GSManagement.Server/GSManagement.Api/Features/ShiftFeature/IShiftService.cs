@@ -10,4 +10,6 @@ public interface IShiftService
     Task<ShiftDto> CreateAsync(CreateShiftDto dto);
     Task<ShiftDto?> UpdateAsync(int id, UpdateShiftDto dto);
     Task<bool> DeleteAsync(int id);
+    Task<List<ShiftAssignmentDto>> GetAssignmentsAsync();
+    Task<List<ShiftAssignmentDto>?> AssignEmployeesAsync(int id, AssignShiftEmployeesDto dto);
 }

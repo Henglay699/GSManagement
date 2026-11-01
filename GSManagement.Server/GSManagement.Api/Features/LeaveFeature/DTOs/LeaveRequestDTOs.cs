@@ -14,7 +14,8 @@ public class LeaveRequestDto
     public LeaveType LeaveType { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
-    public int TotalDays { get; set; }
+    // Working days in the range; 0.5 for a half-day request.
+    public double TotalDays { get; set; }
     public LeaveStatus Status { get; set; }
     public string? ApproverName { get; set; }
     public string? Remark { get; set; }

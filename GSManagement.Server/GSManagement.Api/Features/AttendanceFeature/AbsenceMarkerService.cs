@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GSManagement.Api.Features.AttendanceFeature;
 
-// Closes out working days just after midnight (company time):
+// Closes out working days just after midnight (company time), once each
+// employee's shift for the day is over (an overnight shift is closed out the
+// night after):
 // - active employees with no attendance record for the day are marked Absent;
 // - records that have a clock-in but no clock-out keep their status and are
 //   flagged MissedClockOut so HR can follow up.
@@ -85,24 +87,32 @@ public sealed class AbsenceMarkerService(
         if (onlyStartedEmployees)
             candidates = candidates.Where(u => context.Attendances.Any(a => a.UserId == u.Id && a.Date < day));
 
-        var absentUserIds = await candidates.Select(u => u.Id).ToListAsync(ct);
+        var candidateIds = await candidates.Select(u => u.Id).ToListAsync(ct);
 
-        var defaultShiftId = await context.Shifts
-            .Where(s => s.IsDefault)
-            .Select(s => (int?)s.Id)
-            .FirstOrDefaultAsync(ct);
+        // Each record keeps the shift the employee was on that day. Someone whose
+        // shift hasn't ended yet (overnight) is left for the next run.
+        var shifts = await EmployeeShifts.ForUsersAsync(context, candidateIds, ct);
+        var now = AppClock.Now;
+        var absentUserIds = candidateIds
+            .Where(id => now >= AttendanceRules.ShiftEndsAt(day, shifts.GetValueOrDefault(id)))
+            .ToList();
 
         context.Attendances.AddRange(absentUserIds.Select(userId => new Attendance
         {
             UserId = userId,
             Date = day,
             Status = AttendanceStatus.Absent,
-            ShiftId = defaultShiftId
+            ShiftId = shifts.GetValueOrDefault(userId)?.Id
         }));
 
-        var missedClockOut = await context.Attendances
+        var stillOpen = await context.Attendances
+            .Include(a => a.Shift)
             .Where(a => a.Date == day && a.CheckInTime != null && a.CheckOutTime == null && !a.MissedClockOut)
             .ToListAsync(ct);
+        var defaultShift = await EmployeeShifts.DefaultAsync(context, ct);
+        var missedClockOut = stillOpen
+            .Where(a => now >= AttendanceRules.ShiftEndsAt(day, a.Shift ?? defaultShift))
+            .ToList();
         foreach (var attendance in missedClockOut)
             attendance.MissedClockOut = true;
 

@@ -5,6 +5,18 @@
   endTime: string;
   graceMinutes: number;
   isDefault: boolean;
+  // Active employees working this shift (the default counts everyone not assigned elsewhere).
+  employeeCount: number;
+}
+
+/** GET /shifts/assignments: an active employee and the shift they work. */
+export interface ShiftAssignment {
+  userId: number;
+  userName: string;
+  email: string;
+  imageUrl: string | null;
+  roles: string;
+  shiftId: number | null;
 }
 
 export interface CreateShiftDto {

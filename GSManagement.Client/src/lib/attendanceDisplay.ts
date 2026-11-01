@@ -60,6 +60,13 @@ export const LEGEND_ORDER: DayStatus[] = [
 /** "08:05:00" → "08:05"; null → "–". */
 export const fmtTime = (t: string | null | undefined) => (t ? t.slice(0, 5) : "–");
 
+/** "17:05:00" → "05:05 PM"; null → "–". */
+export function fmtTime12(t: string | null | undefined): string {
+  if (!t) return "–";
+  const [h = 0, m = 0] = t.split(":").map(Number);
+  return `${String(h % 12 || 12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
 /** 75 → "1h 15m", 40 → "40m", 0 → "0m". */
 export function fmtMinutes(min: number): string {
   const m = Math.round(min);

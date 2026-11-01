@@ -160,8 +160,9 @@ export default function LeaveDetailPage() {
                 {request.leaveType}
               </InfoTile>
               <InfoTile icon={<Clock size={16} />} label="Duration">
-                {request.totalDays}{" "}
-                {request.totalDays === 1 ? "Working Day" : "Working Days"}
+                {request.isHalfDay
+                  ? `Half Day${request.halfDayPeriod ? ` (${request.halfDayPeriod})` : ""}`
+                  : `${request.totalDays} ${request.totalDays === 1 ? "Working Day" : "Working Days"}`}
               </InfoTile>
               <InfoTile icon={<Calendar size={16} />} label="Date Range">
                 {request.startDate} <span className="text-fg-3">→</span>{" "}

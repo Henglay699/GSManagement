@@ -1,9 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  ChevronLeft,
-  Loader2,
-} from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import RoleForm from "../../components/role/RoleForm";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
@@ -37,6 +34,22 @@ function UpdateRolePage() {
     }
   };
 
+  if (role && !loading) {
+    return (
+      <RoleForm
+        key={role.id}
+        title="Edit Role"
+        subtitle="Edit role details and permissions"
+        backTo={paths.roles}
+        initialData={role}
+        onSubmit={handleUpdateRole}
+        isSubmitting={isSubmitting}
+        buttonText="Save Changes"
+        errorMessage={errorMessage}
+      />
+    );
+  }
+
   return (
     <div className="w-full space-y-3">
       <div className="flex items-center gap-3 px-1">
@@ -46,31 +59,17 @@ function UpdateRolePage() {
         >
           <ChevronLeft size={16} />
         </Link>
-
-        <div>
-          <h1 className="text-base font-bold text-slate-800 dark:text-white tracking-tight leading-none">
-            Update Role Configuration
-          </h1>
-          <p className="text-[11px] text-fg-2 mt-1 leading-none">
-            Modify details and permission mappings for this role
-          </p>
-        </div>
+        <h1 className="text-base font-bold text-slate-800 dark:text-white tracking-tight leading-none">
+          Edit Role
+        </h1>
       </div>
 
-      <div className="bg-surface rounded-2xl shadow-xs border border-slate-200/80 dark:border-line overflow-hidden">
+      <div className="bg-surface rounded-2xl shadow-xs border border-slate-200/80 dark:border-line">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-10 text-fg-2">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-600 dark:text-indigo-400 mb-2" />
             <span className="text-xs font-medium">Loading role details...</span>
           </div>
-        ) : role ? (
-          <RoleForm
-            initialData={role}
-            onSubmit={handleUpdateRole}
-            isSubmitting={isSubmitting}
-            buttonText="Update Role"
-            errorMessage={errorMessage}
-          />
         ) : (
           <div className="text-center py-8 text-xs text-rose-500 dark:text-rose-400 font-medium">
             Role requested could not be found.

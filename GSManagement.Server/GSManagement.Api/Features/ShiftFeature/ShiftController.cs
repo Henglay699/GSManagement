@@ -39,23 +39,66 @@ public class ShiftController(IShiftService shiftService) : ControllerBase
     [HasPermission(AppPermission.CreateShift)]
     public async Task<ActionResult<ShiftDto>> Create([FromBody] CreateShiftDto dto)
     {
-        var created = await _shiftService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await _shiftService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:int}")]
     [HasPermission(AppPermission.UpdateShift)]
     public async Task<ActionResult<ShiftDto>> Update(int id, [FromBody] UpdateShiftDto dto)
     {
-        var updated = await _shiftService.UpdateAsync(id, dto);
-        return updated is null ? NotFound(new { message = $"Shift {id} not found." }) : Ok(updated);
+        try
+        {
+            var updated = await _shiftService.UpdateAsync(id, dto);
+            return updated is null ? NotFound(new { message = $"Shift {id} not found." }) : Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:int}")]
     [HasPermission(AppPermission.DeleteShift)]
     public async Task<IActionResult> Delete(int id)
     {
-        var success = await _shiftService.DeleteAsync(id);
-        return success ? NoContent() : NotFound(new { message = $"Shift {id} not found." });
+        try
+        {
+            var success = await _shiftService.DeleteAsync(id);
+            return success ? NoContent() : NotFound(new { message = $"Shift {id} not found." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>Every active employee and the shift they work.</summary>
+    [HttpGet("assignments")]
+    [HasPermission(AppPermission.ViewShift)]
+    public async Task<ActionResult<List<ShiftAssignmentDto>>> GetAssignments() =>
+        Ok(await _shiftService.GetAssignmentsAsync());
+
+    /// <summary>Sets who works the shift; returns everyone's shift afterwards.</summary>
+    [HttpPut("{id:int}/employees")]
+    [HasPermission(AppPermission.UpdateShift)]
+    public async Task<ActionResult<List<ShiftAssignmentDto>>> AssignEmployees(int id, [FromBody] AssignShiftEmployeesDto dto)
+    {
+        try
+        {
+            var result = await _shiftService.AssignEmployeesAsync(id, dto);
+            return result is null ? NotFound(new { message = $"Shift {id} not found." }) : Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

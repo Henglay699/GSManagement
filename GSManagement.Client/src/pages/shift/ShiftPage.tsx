@@ -8,11 +8,14 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
+  Users,
 } from "lucide-react";
 import ShiftModal from "../../components/shift/ShiftModal";
+import AssignEmployeesModal from "../../components/shift/AssignEmployeesModal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import { useAsync } from "../../hooks/useAsync";
+import { getErrorMessage } from "../../lib/api";
 import { Permission } from "../../lib/permissions";
 import { deleteShift, fetchShifts } from "../../services/shiftService";
 import type { ShiftDto } from "../../types/shift";
@@ -25,6 +28,8 @@ export default function ShiftPage() {
   }>({ open: false, shift: null });
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [busyDelete, setBusyDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState<ShiftDto | null>(null);
 
   const { data: shifts, loading, error, reload } = useAsync(
     useCallback(() => fetchShifts(), []),
@@ -34,13 +39,14 @@ export default function ShiftPage() {
   async function handleDelete() {
     if (!deletingId) return;
     setBusyDelete(true);
+    setDeleteError(null);
     try {
       await deleteShift(deletingId);
-      setDeletingId(null);
       reload();
-    } catch {
-      // Handled in dialog or reload
+    } catch (err) {
+      setDeleteError(getErrorMessage(err, "Failed to delete the shift."));
     } finally {
+      setDeletingId(null);
       setBusyDelete(false);
     }
   }
@@ -57,8 +63,9 @@ export default function ShiftPage() {
     if (!start || !end) return "";
     const [h1, m1] = start.split(":").map(Number);
     const [h2, m2] = end.split(":").map(Number);
-    const diffMin = h2 * 60 + m2 - (h1 * 60 + m1);
-    if (diffMin <= 0) return "";
+    let diffMin = h2 * 60 + m2 - (h1 * 60 + m1);
+    // Ending at or before the start: an overnight shift, ending the next morning.
+    if (diffMin <= 0) diffMin += 24 * 60;
     const hrs = Math.floor(diffMin / 60);
     const mins = diffMin % 60;
     return mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hrs`;
@@ -78,7 +85,8 @@ export default function ShiftPage() {
             </h1>
           </div>
           <p className="text-xs text-fg-2 mt-1">
-            Configure employee shifts, working hours, grace periods, and default schedules.
+            Set working hours and grace periods, and choose who works each shift. Clock-in opens an hour
+            before a shift starts; lateness, early leave and overtime follow the employee's shift.
           </p>
         </div>
 
@@ -105,6 +113,13 @@ export default function ShiftPage() {
           <span>{error}</span>
         </div>
       ) : (
+        <>
+        {deleteError && (
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{deleteError}</span>
+          </div>
+        )}
         <div className="bg-surface rounded-2xl border border-slate-200 dark:border-line shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -114,7 +129,7 @@ export default function ShiftPage() {
                   <th className="py-3.5 px-4">Working Hours</th>
                   <th className="py-3.5 px-4">Shift Duration</th>
                   <th className="py-3.5 px-4">Late Grace Period</th>
-                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Employees</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -149,6 +164,11 @@ export default function ShiftPage() {
                           <span>
                             {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
                           </span>
+                          {shift.endTime <= shift.startTime && (
+                            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                              Overnight
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -165,10 +185,20 @@ export default function ShiftPage() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-fg-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Active
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-fg-2">
+                            <Users size={13} className="text-fg-3" />
+                            {shift.employeeCount} {shift.employeeCount === 1 ? "employee" : "employees"}
+                          </span>
+                          {hasPermission(Permission.UpdateShift) && (
+                            <button
+                              onClick={() => setAssigning(shift)}
+                              className="rounded-lg px-2 py-0.5 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                            >
+                              Assign
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
@@ -209,6 +239,19 @@ export default function ShiftPage() {
             </table>
           </div>
         </div>
+        </>
+      )}
+
+      {assigning && (
+        <AssignEmployeesModal
+          shift={assigning}
+          shifts={shifts ?? []}
+          onClose={() => setAssigning(null)}
+          onSaved={() => {
+            setAssigning(null);
+            reload();
+          }}
+        />
       )}
 
       {/* Modal */}
@@ -227,7 +270,7 @@ export default function ShiftPage() {
       {deletingId !== null && (
         <ConfirmDialog
           title="Delete Shift"
-          message="Are you sure you want to delete this shift? Existing attendance records linked to this shift will retain their historical data."
+          message="Delete this shift? Its employees go back to the default shift. Days they already worked keep their recorded times."
           confirmLabel="Delete"
           busyLabel="Deleting..."
           busy={busyDelete}

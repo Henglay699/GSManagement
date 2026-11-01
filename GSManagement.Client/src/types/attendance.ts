@@ -115,8 +115,9 @@ export interface EmployeeToday {
   status: DayStatus;
   canClockIn: boolean;
   canClockOut: boolean;
-  // "HH:mm:ss": clock-in is refused before this time.
+  // "HH:mm:ss": self clock-in is only accepted from opensAt until closesAt (the shift's end).
   clockInOpensAt: string;
+  clockInClosesAt: string;
   checkInTime: string | null;
   checkOutTime: string | null;
   expectedStart: string;
@@ -129,6 +130,8 @@ export interface EmployeeToday {
   leaveType: LeaveType | null;
   halfDayPeriod: HalfDayPeriod | null;
   shift: ShiftDto | null;
+  // The shift ends the next morning; `date` is the day it started.
+  overnight: boolean;
 }
 
 export interface ClockResult {

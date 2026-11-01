@@ -1,12 +1,14 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { ArrowLeft, Mail } from "lucide-react";
-import type { MonthSummary, SummaryDay, SummaryTotals } from "../../types/attendance";
-import { DAY_STATUS, FLAG_TONE, dayFlags, fmtNumber, initials, monthLabel } from "../../lib/attendanceDisplay";
+import { ArrowLeft, CalendarDays, CircleDot, Clock, Mail, Pencil, Plus, StickyNote, Timer, X } from "lucide-react";
+import { LEAVE_TYPES } from "../../types/leave";
+import type { DayStatus, MonthSummary, SummaryDay } from "../../types/attendance";
+import { fmtMinutes, fmtNumber, initials, monthLabel } from "../../lib/attendanceDisplay";
 import { todayKey } from "../../utils/dateTimeFormatter";
 import MonthPicker from "../ui/MonthPicker";
 import ZoomablePhoto from "../ui/ZoomablePhoto";
 import AttendanceRing from "./AttendanceRing";
-import TimeCard from "./TimeCard";
+import ClockRange from "./ClockRange";
+import DayNote from "./DayNote";
 import { StatusBadge } from "./StatusBadge";
 
 interface MonthViewProps {
@@ -23,9 +25,26 @@ interface MonthViewProps {
   onEditDay?: (day: SummaryDay) => void;
 }
 
+const NOT_EDITABLE: DayStatus[] = ["OnLeave", "Holiday", "DayOff", "Upcoming"];
+
+// Figures that can filter the day list.
+const DAY_FILTERS: Record<string, { label: string; test: (d: SummaryDay) => boolean }> = {
+  all: { label: "Daily record", test: () => true },
+  present: { label: "Days present", test: (d) => !!d.checkInTime },
+  late: { label: "Late days", test: (d) => d.lateMinutes > 0 },
+  absent: { label: "Absent days", test: (d) => d.status === "Absent" || d.status === "NoRecord" },
+  leave: { label: "Leave days", test: (d) => d.status === "OnLeave" || d.status === "HalfDay" },
+  early: { label: "Left early", test: (d) => d.earlyLeaveMinutes > 0 },
+  noout: { label: "Missed clock-outs", test: (d) => d.missedClockOut },
+  overtime: { label: "Overtime days", test: (d) => d.overtimeMinutes > 0 },
+};
+
+const TH = "border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-fg-2 dark:border-line dark:bg-subtle";
+const TD = "border-b border-slate-100 px-4 py-2.5 align-middle dark:border-line";
+
 /**
- * One employee's month: who, how much they attended, a time card for the
- * selected day, and a calendar with the month's breakdown and flagged days.
+ * One employee's month, laid out like the printed record: a strip of figures
+ * (most of them filter the list) and a row per day, newest first.
  * The employee sees it on "My attendance"; HR sees the same thing per employee.
  */
 export default function MonthView({
@@ -38,21 +57,59 @@ export default function MonthView({
   actions,
   onEditDay,
 }: MonthViewProps) {
-  const [picked, setPicked] = useState<string | null>(null);
+  const [filter, setFilter] = useState("all");
   const days = useMemo(() => summary?.days ?? [], [summary]);
   const e = summary?.employee;
   const t = summary?.totals;
   const busy = loading && !summary;
-
-  // The picked day if it's in this month, otherwise the last day so far.
-  const selected =
-    days.find((d) => d.date === picked) ?? days.find((d) => d.date === summary?.periodEnd) ?? days[0] ?? null;
+  const today = todayKey();
 
   const now = new Date();
   const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1;
 
+  // Newest first, so the 1st of the month is at the bottom; days still to come are left out.
+  const rows = useMemo(() => {
+    const test = DAY_FILTERS[filter]!.test;
+    return days.filter((d) => d.status !== "Upcoming" && test(d)).reverse();
+  }, [days, filter]);
+  const pick = (key: string) => setFilter((f) => (f === key ? "all" : key));
+
+  const leaveTaken = t
+    ? LEAVE_TYPES.filter((lt) => t.leaveByType[lt])
+        .map((lt) => `${lt} ${fmtNumber(t.leaveByType[lt])}`)
+        .join(", ")
+    : "";
+
+  const figures: { label: string; value: ReactNode; filter?: string; tone?: string }[] = [
+    { label: "Attendance", value: t ? `${fmtNumber(t.attendanceRate)}%` : "–" },
+    { label: "Punctuality", value: t ? `${fmtNumber(t.punctualityRate)}%` : "–" },
+    { label: "Present", value: t ? `${fmtNumber(t.presentDays)} / ${t.workingDays}` : "–", filter: "present" },
+    {
+      label: "Late",
+      value: t ? (t.lateDays ? `${t.lateDays}d · ${fmtMinutes(t.lateMinutes)}` : "0") : "–",
+      filter: "late",
+      tone: t?.lateDays ? "text-orange-600 dark:text-orange-400" : undefined,
+    },
+    {
+      label: "Absent",
+      value: t ? `${fmtNumber(t.absentDays)}d` : "–",
+      filter: "absent",
+      tone: t?.absentDays ? "text-rose-600 dark:text-rose-400" : undefined,
+    },
+    { label: "Leave", value: t ? `${fmtNumber(t.leaveDays)}d` : "–", filter: "leave" },
+    { label: "Left early", value: t ? `${t.earlyLeaveDays}d` : "–", filter: "early" },
+    {
+      label: "Missed clock-outs",
+      value: t?.missedClockOuts ?? "–",
+      filter: "noout",
+      tone: t?.missedClockOuts ? "text-rose-600 dark:text-rose-400" : undefined,
+    },
+    { label: "Hours worked", value: t ? `${fmtNumber(t.workedHours)}h` : "–" },
+    { label: "Overtime", value: t ? `${fmtNumber(t.overtimeHours)}h` : "–", filter: "overtime" },
+  ];
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
@@ -111,217 +168,148 @@ export default function MonthView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.55fr_1fr]">
-        {busy || !selected ? (
-          <div className="h-80 animate-pulse rounded-2xl bg-subtle" />
-        ) : (
-          <TimeCard day={selected} onEdit={onEditDay} />
-        )}
-
-        <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          {busy ? (
-            <div className="h-64 animate-pulse rounded-xl bg-subtle" />
+      {/* Figures: one strip, like the printed record. Most of them filter the list. */}
+      <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-surface shadow-xs sm:grid-cols-5 xl:grid-cols-10 dark:border-line">
+        {figures.map((f) => {
+          const active = filter === f.filter;
+          const body = (
+            <>
+              <span className="block truncate text-[11px] text-fg-2">{f.label}</span>
+              {busy ? (
+                <span className="skeleton mt-1 block h-5 w-10" />
+              ) : (
+                <span className={`mt-0.5 block truncate text-base font-semibold tabular-nums ${f.tone ?? "text-fg"}`}>
+                  {f.value}
+                </span>
+              )}
+            </>
+          );
+          const cls = "min-w-0 border-b border-r border-slate-100 px-3.5 py-2.5 text-left dark:border-line";
+          return f.filter ? (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => pick(f.filter!)}
+              aria-pressed={active}
+              title={`Show ${DAY_FILTERS[f.filter]!.label.toLowerCase()}`}
+              className={`${cls} transition-colors ${
+                active
+                  ? "bg-indigo-50 ring-1 ring-inset ring-indigo-200 dark:bg-indigo-950/40 dark:ring-indigo-800"
+                  : "hover:bg-slate-50 dark:hover:bg-zinc-800/60"
+              }`}
+            >
+              {body}
+            </button>
           ) : (
-            <Calendar days={days} selected={selected?.date ?? null} onSelect={setPicked} />
-          )}
-
-          {t && (
-            <div className="border-t border-slate-100 pt-4 dark:border-zinc-800">
-              <CompositionBar totals={t} />
+            <div key={f.label} className={cls}>
+              {body}
             </div>
-          )}
+          );
+        })}
+      </div>
 
-          <div className="border-t border-slate-100 pt-4 dark:border-zinc-800">
-            <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-zinc-300">Needs attention this month</p>
-            <FlaggedDays days={days} selected={selected?.date ?? null} onSelect={setPicked} />
-          </div>
+      {/* Daily record: scrolls inside its box so the page fits on one screen. */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-surface shadow-xs dark:border-line">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5 dark:border-line">
+          <h2 className="text-sm font-semibold text-fg">{DAY_FILTERS[filter]!.label}</h2>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-fg-2 dark:bg-subtle">
+            {rows.length}
+          </span>
+          {filter !== "all" && (
+            <button
+              onClick={() => setFilter("all")}
+              className="ml-1 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              <X size={12} /> Show all days
+            </button>
+          )}
+          {leaveTaken && <span className="ml-auto text-[11px] text-fg-3">Leave taken: {leaveTaken}</span>}
+        </div>
+
+        <div className="max-h-[calc(100vh-20rem)] min-h-[240px] overflow-auto">
+          {busy ? (
+            <div className="h-64 skeleton rounded-none" />
+          ) : rows.length === 0 ? (
+            <p className="px-4 py-12 text-center text-xs text-fg-3">No days match this filter.</p>
+          ) : (
+            <table className="w-full min-w-[820px] border-separate border-spacing-0 text-[13px]">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  <th className={`${TH} w-[18%]`}>
+                    <span className="flex items-center gap-1.5"><CalendarDays size={13} /> Date</span>
+                  </th>
+                  <th className={`${TH} w-[32%] border-l`}>
+                    <span className="flex items-center gap-1.5"><Clock size={13} /> Clock-in & Out</span>
+                  </th>
+                  <th className={`${TH} border-l`}>
+                    <span className="flex items-center gap-1.5"><Timer size={13} /> Overtime</span>
+                  </th>
+                  <th className={`${TH} border-l`}>
+                    <span className="flex items-center gap-1.5"><CircleDot size={13} /> Status</span>
+                  </th>
+                  <th className={`${TH} border-l`}>
+                    <span className="flex items-center gap-1.5"><StickyNote size={13} /> Note</span>
+                  </th>
+                  {onEditDay && <th className={`${TH} no-print w-px`} />}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((d) => {
+                  const quiet = d.status === "DayOff" || d.status === "Holiday";
+                  const editable = onEditDay && !NOT_EDITABLE.includes(d.status);
+                  return (
+                    <tr
+                      key={d.date}
+                      className={quiet ? "bg-slate-50/60 dark:bg-zinc-900/40" : "hover:bg-slate-50/70 dark:hover:bg-zinc-800/40"}
+                    >
+                      <td className={TD}>
+                        <span className={`block font-medium ${quiet ? "text-fg-3" : "text-fg"}`}>
+                          {new Date(`${d.date}T00:00:00`).toLocaleDateString("en-GB", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </span>
+                        {d.date === today ? (
+                          <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">Today</span>
+                        ) : (
+                          d.shiftName && <span className="text-[11px] text-fg-3">{d.shiftName}</span>
+                        )}
+                      </td>
+                      <td className={`${TD} border-l`}>
+                        <ClockRange day={d} />
+                      </td>
+                      <td className={`${TD} border-l tabular-nums`}>
+                        {d.overtimeMinutes > 0 ? (
+                          <span className="font-medium text-fg">{fmtMinutes(d.overtimeMinutes)}</span>
+                        ) : (
+                          <span className="text-fg-3">-</span>
+                        )}
+                      </td>
+                      <td className={`${TD} border-l`}>
+                        <StatusBadge status={d.status} />
+                      </td>
+                      <td className={`${TD} max-w-[16rem] border-l`}>
+                        <DayNote day={d} />
+                      </td>
+                      {onEditDay && (
+                        <td className={`${TD} no-print text-right`}>
+                          {editable && (
+                            <button onClick={() => onEditDay(d)} className="btn btn-ghost btn-sm">
+                              {d.attendanceId ? <Pencil size={14} /> : <Plus size={14} />}
+                              {d.attendanceId ? "Edit" : "Add"}
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- calendar
-
-const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
-
-// Bar under the date: the day's status.
-const STATUS_BAR: Partial<Record<SummaryDay["status"], string>> = {
-  Present: "bg-emerald-500",
-  Late: "bg-amber-500",
-  HalfDay: "bg-indigo-500",
-  OnLeave: "bg-purple-500",
-  Absent: "bg-rose-500",
-  InProgress: "bg-sky-500",
-  NoRecord: "bg-slate-300 dark:bg-zinc-600",
-};
-
-function Calendar({
-  days,
-  selected,
-  onSelect,
-}: {
-  days: SummaryDay[];
-  selected: string | null;
-  onSelect: (date: string) => void;
-}) {
-  const today = todayKey();
-  if (!days.length) return null;
-  const leading = (new Date(`${days[0]!.date}T00:00:00`).getDay() + 6) % 7; // Monday = 0
-
-  return (
-    <div className="grid grid-cols-7 gap-1 text-center">
-      {WEEKDAYS.map((d, i) => (
-        <span key={`${d}-${i}`} className="py-1 text-[10px] font-semibold text-slate-400 dark:text-zinc-500">
-          {d}
-        </span>
-      ))}
-      {Array.from({ length: leading }, (_, i) => (
-        <span key={`pad-${i}`} />
-      ))}
-      {days.map((d) => {
-        const isSelected = d.date === selected;
-        const isToday = d.date === today;
-        const holiday = d.status === "Holiday";
-        const quiet = d.status === "DayOff" || d.status === "Upcoming";
-        const bar = STATUS_BAR[d.status];
-        return (
-          <button
-            key={d.date}
-            onClick={() => onSelect(d.date)}
-            title={[DAY_STATUS[d.status].label, d.holidayName].filter(Boolean).join(" · ")}
-            className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-              isSelected
-                ? "bg-indigo-600 text-white"
-                : isToday
-                  ? "text-indigo-600 ring-1 ring-inset ring-indigo-400 dark:text-indigo-400 dark:ring-indigo-500"
-                  : quiet
-                    ? "text-slate-300 hover:bg-slate-100 dark:text-zinc-600 dark:hover:bg-zinc-800"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <span>{Number(d.date.slice(8))}</span>
-            {holiday && (
-              <span
-                className={`absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : "bg-rose-500"}`}
-              />
-            )}
-            {bar && (
-              <span className={`absolute bottom-1 h-[3px] w-3 rounded-full ${isSelected ? "bg-white/80" : bar}`} />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ----------------------------------------------------------- breakdown bar
-
-function CompositionBar({ totals: t }: { totals: SummaryTotals }) {
-  const segments = [
-    { key: "ontime", label: "On time", value: t.onTimeDays, color: "bg-emerald-500" },
-    { key: "late", label: "Late", value: t.lateDays, color: "bg-amber-500" },
-    { key: "absent", label: "Absent", value: t.absentDays, color: "bg-rose-500" },
-    { key: "leave", label: "Leave", value: t.leaveDays, color: "bg-purple-500" },
-  ];
-  const total = segments.reduce((sum, s) => sum + s.value, 0);
-
-  return (
-    <div>
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800">
-        {total > 0 &&
-          segments.map(
-            (s) =>
-              s.value > 0 && (
-                <div
-                  key={s.key}
-                  className={`${s.color} h-full motion-safe:transition-all motion-safe:duration-500`}
-                  style={{ width: `${(s.value / total) * 100}%` }}
-                  title={`${s.label}: ${fmtNumber(s.value)}`}
-                />
-              ),
-          )}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-        {segments.map((s) => (
-          <div key={s.key} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-zinc-400">
-            <span className={`h-2 w-2 shrink-0 rounded-sm ${s.color}`} />
-            <span className="font-semibold text-slate-800 dark:text-zinc-100">{fmtNumber(s.value)}</span>
-            <span>{s.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-3 text-xs text-slate-500 dark:text-zinc-400">
-        <span className="font-semibold text-slate-800 dark:text-zinc-100">{fmtNumber(t.workedHours)}h</span> worked
-        {t.overtimeHours > 0 && (
-          <>
-            {" · "}
-            <span className="font-semibold text-slate-800 dark:text-zinc-100">{fmtNumber(t.overtimeHours)}h</span>{" "}
-            overtime
-          </>
-        )}
-        {" · "}
-        {t.presentDays} of {t.workingDays} working days
-      </p>
-    </div>
-  );
-}
-
-// ------------------------------------------------------------ flagged days
-
-const shortLabel = (key: string) =>
-  new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-
-// Absent, late, left early or missed clock-out; each one jumps the time card to it.
-function FlaggedDays({
-  days,
-  selected,
-  onSelect,
-}: {
-  days: SummaryDay[];
-  selected: string | null;
-  onSelect: (date: string) => void;
-}) {
-  const today = todayKey();
-  // A past half day with no clock-in: the working half was missed (counts 0.5 absent).
-  const missedHalf = (d: SummaryDay) => d.status === "HalfDay" && !d.checkInTime && d.date < today;
-  const flagged = days.filter(
-    (d) => d.status === "Absent" || d.status === "Late" || d.earlyLeaveMinutes > 0 || d.missedClockOut || missedHalf(d),
-  );
-
-  if (flagged.length === 0) {
-    return <p className="py-1 text-xs text-slate-400 dark:text-zinc-500">No late, absent or early days this month.</p>;
-  }
-
-  return (
-    <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
-      {flagged.map((d) => {
-        const isSelected = d.date === selected;
-        const flag = dayFlags(d).find((f) => f.tone !== "info");
-        return (
-          <button
-            key={d.date}
-            onClick={() => onSelect(d.date)}
-            className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-              isSelected
-                ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
-                : "text-slate-600 hover:bg-slate-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <span className="font-medium">{shortLabel(d.date)}</span>
-            {d.status === "Absent" || d.status === "Late" ? (
-              <StatusBadge status={d.status} />
-            ) : missedHalf(d) ? (
-              <span className="font-semibold text-rose-600 dark:text-rose-400">Missed working half</span>
-            ) : (
-              <span className={`font-semibold ${flag ? FLAG_TONE[flag.tone] : ""}`}>{flag?.label}</span>
-            )}
-          </button>
-        );
-      })}
     </div>
   );
 }

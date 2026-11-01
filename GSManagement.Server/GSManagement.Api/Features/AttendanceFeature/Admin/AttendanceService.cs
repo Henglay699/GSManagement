@@ -81,7 +81,8 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
             throw new KeyNotFoundException($"Employee {dto.UserId} was not found.");
 
         var attendance = new Attendance { UserId = dto.UserId, Date = dto.Date };
-        var shift = await ResolveShiftAsync(dto.ShiftId);
+        var shift = await ResolveShiftAsync(dto.ShiftId, dto.UserId);
+        ValidateTimes(dto, shift);
         Fill(attendance, dto, shift);
 
         _context.Attendances.Add(attendance);
@@ -100,9 +101,9 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
         // The employee and date of a record never change; only its times/notes.
         dto.UserId = attendance.UserId;
         dto.Date = attendance.Date;
-        ValidateTimes(dto);
 
-        var shift = await ResolveShiftAsync(dto.ShiftId ?? attendance.ShiftId);
+        var shift = await ResolveShiftAsync(dto.ShiftId ?? attendance.ShiftId, attendance.UserId);
+        ValidateTimes(dto, shift);
         Fill(attendance, dto, shift);
         await _context.SaveChangesAsync();
         return Map(attendance);
@@ -144,9 +145,8 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
         AttendanceRules.Apply(a, shift);
     }
 
-    private async Task ValidateDayAsync(SaveAttendanceDto dto)
+    private static async Task ValidateDayAsync(SaveAttendanceDto dto)
     {
-        ValidateTimes(dto);
         if (dto.Date > AppClock.Today)
             throw new InvalidOperationException("Attendance can't be recorded for a future date.");
         if (dto.Date.DayOfWeek == DayOfWeek.Sunday)
@@ -158,19 +158,20 @@ public class AttendanceService(GSDbContext context, AttendanceSummaryService sum
             throw new InvalidOperationException($"{dto.Date:dd MMM yyyy} is a public holiday ({holiday.EnglishName ?? holiday.KhmerName}).");
     }
 
-    private static void ValidateTimes(SaveAttendanceDto dto)
+    private static void ValidateTimes(SaveAttendanceDto dto, Shift? shift)
     {
         if (dto.MarkAbsent) return;
-        if (dto.CheckInTime is null)
+        if (dto.CheckInTime is not { } i)
             throw new InvalidOperationException("Enter a check-in time, or mark the day as absent.");
-        if (dto.CheckOutTime is { } o && o <= dto.CheckInTime)
+        // On an overnight shift a check-out the next morning is after the check-in.
+        if (dto.CheckOutTime is { } o && !AttendanceRules.IsAfter(o, i, shift))
             throw new InvalidOperationException("Check-out must be after check-in.");
     }
 
-    private async Task<Shift?> ResolveShiftAsync(int? shiftId) =>
+    // The shift chosen for the record, else the one the employee works.
+    private async Task<Shift?> ResolveShiftAsync(int? shiftId, int userId) =>
         (shiftId is { } id ? await _context.Shifts.FindAsync(id) : null)
-        ?? await _context.Shifts.FirstOrDefaultAsync(s => s.IsDefault)
-        ?? await _context.Shifts.FirstOrDefaultAsync();
+        ?? await EmployeeShifts.ForUserAsync(_context, userId);
 
     private static AttendanceRecordDto Map(Attendance a) => new(
         a.Id, a.UserId, a.Date, a.CheckInTime, a.CheckOutTime, a.Status, a.LateMinutes,

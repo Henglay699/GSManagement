@@ -49,10 +49,8 @@ public class AttendanceSummaryService(GSDbContext context)
             .Select(u => new SummaryEmployeeDto(u.Id, u.UserName, u.Email, u.ImageUrl, string.Join(", ", u.Roles)))
             .ToList();
 
-        var defaultShift = await _context.Shifts.AsNoTracking().FirstOrDefaultAsync(s => s.IsDefault)
-            ?? await _context.Shifts.AsNoTracking().FirstOrDefaultAsync();
-
         var userIds = users.Select(u => u.Id).ToList();
+        var employeeShifts = await EmployeeShifts.ForUsersAsync(_context, userIds);
         var records = await _context.Attendances
             .AsNoTracking()
             .Where(a => userIds.Contains(a.UserId) && a.Date >= monthStart && a.Date <= monthEnd)
@@ -70,6 +68,7 @@ public class AttendanceSummaryService(GSDbContext context)
         return users.Select(user =>
         {
             var mine = byUser[user.Id].ToDictionary(r => r.Date);
+            var userShift = employeeShifts.GetValueOrDefault(user.Id);
             var days = new List<SummaryDayDto>();
             var leaveByType = LeaveTypes.ToDictionary(t => t, _ => 0d);
             int workingDays = 0, present = 0, onTime = 0, late = 0, lateMin = 0,
@@ -88,25 +87,28 @@ public class AttendanceSummaryService(GSDbContext context)
 
                 if (mine.TryGetValue(d, out var r))
                 {
+                    var dayShift = r.Shift ?? userShift;
+                    // Still at work: today's shift, or last night's until it has ended.
+                    var shiftRunning = d == today
+                        || (d == today.AddDays(-1) && AppClock.Now < AttendanceRules.ShiftEndsAt(d, dayShift));
                     var status = r.Status switch
                     {
                         AttendanceStatus.OnLeave => DayStatus.OnLeave,
                         AttendanceStatus.Absent => DayStatus.Absent,
                         AttendanceStatus.HalfDay => DayStatus.HalfDay,
-                        _ when d == today && r.CheckInTime != null && r.CheckOutTime == null => DayStatus.InProgress,
+                        _ when shiftRunning && r.CheckInTime != null && r.CheckOutTime == null => DayStatus.InProgress,
                         AttendanceStatus.Late => DayStatus.Late,
                         _ => DayStatus.Present
                     };
 
-                    var worked = AttendanceRules.WorkedMinutes(r.CheckInTime, r.CheckOutTime);
-                    var dayShift = r.Shift ?? defaultShift;
+                    var worked = AttendanceRules.WorkedMinutes(r.CheckInTime, r.CheckOutTime, dayShift);
                     var window = AttendanceRules.ExpectedWindow(
                         dayShift, r.Status == AttendanceStatus.HalfDay || r.IsHalfDay, r.HalfDayPeriod);
                     // Recomputed from the clock times (not the stored value) so older
                     // records follow the current overtime rule too.
                     var ot = r.Status == AttendanceStatus.OnLeave ? 0 : AttendanceRules.OvertimeMinutes(
-                        r.CheckInTime, r.CheckOutTime, window.Start, window.End,
-                        dayShift?.EndTime ?? AttendanceRules.DefaultEnd);
+                        r.CheckInTime, r.CheckOutTime, dayShift,
+                        r.Status == AttendanceStatus.HalfDay || r.IsHalfDay, r.HalfDayPeriod);
 
                     switch (r.Status)
                     {
@@ -147,7 +149,7 @@ public class AttendanceSummaryService(GSDbContext context)
                     days.Add(new SummaryDayDto(
                         d, status, r.Id, holidayName, r.CheckInTime, r.CheckOutTime, worked,
                         r.LateMinutes, r.EarlyLeaveMinutes, ot, r.MissedClockOut,
-                        r.LeaveType, r.HalfDayPeriod, r.Shift?.Name, r.Remark, hours.Item1, hours.Item2));
+                        r.LeaveType, r.HalfDayPeriod, dayShift?.Name, r.Remark, hours.Item1, hours.Item2));
                     continue;
                 }
 
@@ -157,9 +159,9 @@ public class AttendanceSummaryService(GSDbContext context)
                     : d == today ? DayStatus.NotClockedIn
                     : DayStatus.NoRecord;
 
-                var (start, end, _) = AttendanceRules.ExpectedWindow(defaultShift, false, null);
+                var (start, end, _) = AttendanceRules.ExpectedWindow(userShift, false, null);
                 days.Add(new SummaryDayDto(d, empty, null, holidayName, null, null, 0, 0, 0, 0,
-                    false, null, null, null, null,
+                    false, null, null, isWorking ? userShift?.Name : null, null,
                     isWorking ? start : null, isWorking ? end : null));
             }
 
