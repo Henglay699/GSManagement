@@ -28,6 +28,13 @@ public class RoleService(GSDbContext context, UserAccessCache accessCache) : IRo
 
 
     //------------------------------==--------------------------------------------
+    public Task<List<RoleOptionResponse>> GetRoleOptionsAsync(CancellationToken cancellationToken) =>
+        context.Roles
+            .AsNoTracking()
+            .OrderBy(r => r.RoleName)
+            .Select(r => new RoleOptionResponse(r.Id, r.RoleName))
+            .ToListAsync(cancellationToken);
+
     public async Task<Result<PagedResult<RoleResponse>>> GetAllRoleAsync(
         int pageNumber,
         int pageSize,
@@ -97,7 +104,7 @@ public class RoleService(GSDbContext context, UserAccessCache accessCache) : IRo
         {
             RoleName = request.RoleName,
             Description = request.Description,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.UtcNow
         };
         foreach (var permission in validPermissions)
         {

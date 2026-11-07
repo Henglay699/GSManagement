@@ -180,7 +180,7 @@ public class UserService(
     public async Task<Result<UserResponse>> UpdateUserAsync(UpdateUserRequest request, int Id, CancellationToken cancellationToken)
     {
         var user = await _context.Users
-            .Include(u => u.Roles)
+            .Include(u => u.Roles).ThenInclude(r => r.Permissions)
             .FirstOrDefaultAsync(u => u.Id == Id, cancellationToken);
 
         if (user == null)
@@ -202,8 +202,10 @@ public class UserService(
                 return Result<UserResponse>.Fail("Username is already used by another user.", ErrorType.Conflict);
         }
 
+        // Null RoleIds means "leave roles as they are" (callers without AssignRole).
+        var changeRoles = request.RoleIds is not null;
         var roleIds = request.RoleIds?.Distinct().ToList() ?? [];
-        List<Role> newRoles = [];
+        List<Role> newRoles = changeRoles ? [] : [.. user.Roles];
 
         if (roleIds.Count != 0)
         {
@@ -238,10 +240,13 @@ public class UserService(
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
         }
 
-        user.Roles.Clear();
-        foreach (var role in newRoles)
+        if (changeRoles)
         {
-            user.Roles.Add(role);
+            user.Roles.Clear();
+            foreach (var role in newRoles)
+            {
+                user.Roles.Add(role);
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);

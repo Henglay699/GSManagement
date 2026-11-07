@@ -2,6 +2,15 @@
     "csharp-dev-tools.solutionViewer.selectedWorkspaceSolutions": [
         "GSManagement.slnx"
     ],
-    "dotnet.defaultSolution": "disable",
-    "CodeGPT.apiKey": "Antigravity"
+    "dotnet.defaultSolution": "GSManagement.Api/GSManagement.Api.sln",
+    "CodeGPT.apiKey": "Antigravity",
+    "csharp-dev-tools.entityFramework.migrationPreferences": {
+        "GSManagement.slnx": {
+            "startupProject": "GSManagement.Api\\GSManagement.Api.csproj",
+            "migrationsProject": "GSManagement.Domain\\GSManagement.Domain.csproj",
+            "dbContextClass": "GSDbContext",
+            "migrationsFolder": "Migrations",
+            "targetMigration": ""
+        }
+    }
 }

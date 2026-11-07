@@ -25,6 +25,7 @@ import PermissionDetailPage from "./pages/permission/PermissionDetailPage";
 import DailyAttendancePage from "./pages/attendance/DailyAttendancePage";
 import EmployeeAttendancePage from "./pages/attendance/EmployeeAttendancePage";
 import ShiftPage from "./pages/shift/ShiftPage";
+import ClientPage from "./pages/client/ClientPage";
 import MonthlyReportPage from "./pages/report/MonthlyReportPage";
 import LeaveRequestsPage from "./pages/leave/LeaveRequestsPage";
 import LeaveHistoryPage from "./pages/leave/LeaveHistoryPage";
@@ -92,6 +93,7 @@ function App() {
         />
 
         <Route path={paths.shifts} element={guard(Permission.ViewShift, <ShiftPage />)} />
+        <Route path={paths.clients} element={guard(Permission.ViewClient, <ClientPage />)} />
         <Route path={paths.monthlyReport} element={guard(Permission.ViewAttendance, <MonthlyReportPage />)} />
 
         <Route path="/leaves/requests" element={guard(Permission.ViewLeave, <LeaveRequestsPage />)} />

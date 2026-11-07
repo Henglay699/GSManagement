@@ -22,5 +22,12 @@ public enum AppPermission
 
     // Shift
     ViewShift, CreateShift, UpdateShift, DeleteShift,
+
+    // Client: see every client (not only the ones assigned to you), and assign operators.
+    // Stored by name, so new values go at the end.
+    ViewAllClients, AssignClient,
+
+    // Role: choose which roles a user holds (separate from viewing/editing roles).
+    AssignRole,
 }
 

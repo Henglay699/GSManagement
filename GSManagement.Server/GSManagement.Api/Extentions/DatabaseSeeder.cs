@@ -30,7 +30,7 @@ public static class DatabaseSeeder
                 PermissionName = permission,
                 Module = GetModuleFromPermission(permission),
                 Description = GetDescription(permission),
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             })
             .ToList();
 
@@ -65,10 +65,10 @@ public static class DatabaseSeeder
                 .ToList();
 
             await context.Roles.AddRangeAsync(
-                new Role { RoleName = Role.AdminRoleName, Permissions = permissions, CreatedAt = DateTime.Now }, // Admin gets all permissions
-                new Role { RoleName = "HR", Permissions = userModulePermissions, CreatedAt = DateTime.Now },
-                new Role { RoleName = "Operation", CreatedAt = DateTime.Now },
-                new Role { RoleName = "Accountant", CreatedAt = DateTime.Now }
+                new Role { RoleName = Role.AdminRoleName, Permissions = permissions, CreatedAt = DateTime.UtcNow }, // Admin gets all permissions
+                new Role { RoleName = "HR", Permissions = userModulePermissions, CreatedAt = DateTime.UtcNow },
+                new Role { RoleName = "Operation", CreatedAt = DateTime.UtcNow },
+                new Role { RoleName = "Accountant", CreatedAt = DateTime.UtcNow }
             );
             await context.SaveChangesAsync();
         }
@@ -98,6 +98,27 @@ public static class DatabaseSeeder
                 await context.SaveChangesAsync();
             }
         }
+
+        // 2c. Clients: each operator handles their own clients (ClientOperators).
+        // Operators see and update only the clients assigned to them; the
+        // Operations Manager sees every client and assigns operators. Granted
+        // idempotently so existing databases pick it up too.
+        await GrantAsync(context, "Operation",
+            AppPermission.ViewClient, AppPermission.CreateClient, AppPermission.UpdateClient);
+
+        if (!await context.Roles.AnyAsync(r => r.RoleName == OperationsManagerRole))
+        {
+            context.Roles.Add(new Role
+            {
+                RoleName = OperationsManagerRole,
+                Description = "Assigns clients to operators, sees every client, approves operations work",
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+        }
+        await GrantAsync(context, OperationsManagerRole,
+            AppPermission.ViewClient, AppPermission.CreateClient, AppPermission.UpdateClient,
+            AppPermission.DeleteClient, AppPermission.ViewAllClients, AppPermission.AssignClient);
 
         // 3. Seed Users
         if (!await context.Users.AnyAsync())
@@ -216,6 +237,27 @@ public static class DatabaseSeeder
         }
     }
 
+    public const string OperationsManagerRole = "Operations Manager";
+
+    /// <summary>Adds the permissions to the role (if the role exists) without removing any.</summary>
+    private static async Task GrantAsync(GSDbContext context, string roleName, params AppPermission[] wanted)
+    {
+        var role = await context.Roles
+            .Include(r => r.Permissions)
+            .FirstOrDefaultAsync(r => r.RoleName == roleName);
+        if (role is null) return;
+
+        var permissions = await context.Permissions
+            .Where(p => wanted.Contains(p.PermissionName))
+            .ToListAsync();
+        var missing = permissions.Where(p => role.Permissions.All(x => x.Id != p.Id)).ToList();
+        if (missing.Count == 0) return;
+
+        foreach (var permission in missing)
+            role.Permissions.Add(permission);
+        await context.SaveChangesAsync();
+    }
+
     private static PermissionModule GetModuleFromPermission(AppPermission permission)
     {
         return permission switch
@@ -224,6 +266,7 @@ public static class DatabaseSeeder
                 => PermissionModule.User,
 
             AppPermission.ViewRole or AppPermission.CreateRole or AppPermission.UpdateRole or AppPermission.DeleteRole
+                or AppPermission.AssignRole
                 => PermissionModule.Role,
 
             AppPermission.ViewPermission or AppPermission.CreatePermission or AppPermission.UpdatePermssion or AppPermission.DeletePermssion
@@ -237,6 +280,7 @@ public static class DatabaseSeeder
                 => PermissionModule.Leave,
 
             AppPermission.ViewClient or AppPermission.CreateClient or AppPermission.UpdateClient or AppPermission.DeleteClient
+                or AppPermission.ViewAllClients or AppPermission.AssignClient
                 => PermissionModule.Client,
 
             AppPermission.ViewShift or AppPermission.CreateShift or AppPermission.UpdateShift or AppPermission.DeleteShift
@@ -264,6 +308,8 @@ public static class DatabaseSeeder
             => "Can " + nameof(AppPermission.UpdateRole),
         AppPermission.DeleteRole
             => "Can " + nameof(AppPermission.DeleteRole),
+        AppPermission.AssignRole
+            => "Can assign roles to users",
 
         AppPermission.ViewPermission
             => "Can " + nameof(AppPermission.ViewPermission),
@@ -300,6 +346,10 @@ public static class DatabaseSeeder
             => "Can " + nameof(AppPermission.UpdateClient),
         AppPermission.DeleteClient
             => "Can " + nameof(AppPermission.DeleteClient),
+        AppPermission.ViewAllClients
+            => "Can see every client, not only assigned ones",
+        AppPermission.AssignClient
+            => "Can assign operators to clients",
 
         AppPermission.ViewShift
             => "Can " + nameof(AppPermission.ViewShift),

@@ -15,6 +15,7 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientOperator> ClientOperators => Set<ClientOperator>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Shift> Shifts => Set<Shift>();
@@ -28,6 +29,8 @@ public class GSDbContext(DbContextOptions<GSDbContext> options) : DbContext(opti
         modelBuilder.ApplyConfiguration(new AttendanceConfig());
         modelBuilder.ApplyConfiguration(new LeaveRequestConfig());
         modelBuilder.ApplyConfiguration(new ShiftConfig());
+        modelBuilder.ApplyConfiguration(new ClientConfig());
+        modelBuilder.ApplyConfiguration(new ClientOperatorConfig());
 
         base.OnModelCreating(modelBuilder);
     }

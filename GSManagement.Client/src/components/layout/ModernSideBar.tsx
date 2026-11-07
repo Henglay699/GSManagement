@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Activity,
   Bell,
+  Building2,
   CalendarCheck,
   CalendarOff,
   ChevronDown,
@@ -142,6 +143,13 @@ export default function ModernSideBar({
       path: paths.dashboard,
       icon: <LayoutDashboard size={20} />,
       permission: Permission.ViewAttendance,
+    },
+    {
+      // Operators: their own clients. Operations Manager: every client and who handles it.
+      text: "Clients",
+      path: paths.clients,
+      icon: <Building2 size={20} />,
+      permission: Permission.ViewClient,
     },
     {
       text: "Staff Attendance",

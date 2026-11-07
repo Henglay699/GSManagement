@@ -1,4 +1,5 @@
 using GSManagement.Api.Features.AttendanceFeature.Summary;
+using GSManagement.Api.Features.ClientFeature;
 using GSManagement.Api.Features.ReportFeature;
 using GSManagement.Api.Features.AttendanceFeature;
 using GSManagement.Api.Features.AttendanceFeature.Admin;
@@ -43,6 +44,7 @@ public static class ApplicationServices
         service.AddScoped<IAttendanceService, AttendanceService>();
         service.AddScoped<IEmployeeAttendanceService, EmployeeAttendanceService>();
         service.AddScoped<IShiftService, ShiftService>();
+        service.AddScoped<IClientService, ClientService>();
         service.AddScoped<ILeaveRequestService, LeaveRequestService>();
         service.AddScoped<LeaveNotifier>();
         service.AddScoped<AttendanceSummaryService>();

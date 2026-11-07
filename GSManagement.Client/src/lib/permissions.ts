@@ -16,6 +16,8 @@ export const Permission = {
   CreateRole: "CreateRole",
   UpdateRole: "UpdateRole",
   DeleteRole: "DeleteRole",
+  // Choose which roles a user holds (user form), without role management access.
+  AssignRole: "AssignRole",
 
   ViewPermission: "ViewPermission",
 
@@ -32,6 +34,15 @@ export const Permission = {
   CreateShift: "CreateShift",
   UpdateShift: "UpdateShift",
   DeleteShift: "DeleteShift",
+
+  ViewClient: "ViewClient",
+  CreateClient: "CreateClient",
+  UpdateClient: "UpdateClient",
+  DeleteClient: "DeleteClient",
+  // See every client, not only the ones assigned to you.
+  ViewAllClients: "ViewAllClients",
+  // Choose who handles each client (Operations Manager).
+  AssignClient: "AssignClient",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];

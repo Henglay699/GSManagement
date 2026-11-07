@@ -50,6 +50,11 @@ public class UserController(IUserService userService) : ControllerBase
             return BadRequest(new { error = "Request body cannot be null." });
         }
 
+        if (request.RoleIds?.Any() == true && !CanAssignRoles)
+        {
+            return MissingAssignRole();
+        }
+
         var result = await userService.CreateUserAsync(request, cancellationToken);
 
         if (!result.IsSuccess)
@@ -72,6 +77,12 @@ public class UserController(IUserService userService) : ControllerBase
         {
             return BadRequest(new { error = "Request body cannot be null." });
         }
+        // Omitting RoleIds keeps the user's current roles; sending them needs AssignRole.
+        if (request.RoleIds is not null && !CanAssignRoles)
+        {
+            return MissingAssignRole();
+        }
+
         var result = await userService.UpdateUserAsync(request, id, cancellationToken);
         if (!result.IsSuccess)
         {
@@ -85,6 +96,13 @@ public class UserController(IUserService userService) : ControllerBase
 
         return Ok(result.Value);
     }
+
+    private bool CanAssignRoles =>
+        User.HasClaim(UserAccessCache.PermissionClaimType, nameof(AppPermission.AssignRole));
+
+    private ObjectResult MissingAssignRole() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { error = "You don't have permission to assign roles (AssignRole)." });
 
     [HttpDelete("{id}")]
     [HasPermission(AppPermission.DeleteUser)]

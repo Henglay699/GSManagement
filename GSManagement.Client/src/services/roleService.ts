@@ -1,6 +1,6 @@
 import { api } from "../lib/api";
 import type { PagedResult } from "../types/common";
-import type { Role, RoleFormData } from "../types/role";
+import type { Role, RoleFormData, RoleOption } from "../types/role";
 
 export const fetchRoles = async (
   pageNumber: number,
@@ -10,6 +10,12 @@ export const fetchRoles = async (
   const response = await api.get<PagedResult<Role>>("/role", {
     params: { pageNumber, pageSize, searchTerm },
   });
+  return response.data;
+};
+
+// Roles for the user form's "Assign Roles" picker. Needs AssignRole, not ViewRole.
+export const fetchRoleOptions = async (): Promise<RoleOption[]> => {
+  const response = await api.get<RoleOption[]>("/role/options");
   return response.data;
 };
 

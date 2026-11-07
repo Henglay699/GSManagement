@@ -8,6 +8,12 @@ export interface Role {
   permissions: Permission[];
 }
 
+// Pick-list entry from GET /role/options (needs AssignRole).
+export interface RoleOption {
+  id: number;
+  roleName: string;
+}
+
 export interface RoleFormData {
   roleName: string;
   description: string;

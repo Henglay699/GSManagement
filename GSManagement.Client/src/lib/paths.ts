@@ -32,6 +32,9 @@ export const paths = {
     month ? `/attendance/employees/${id}?month=${month}` : `/attendance/employees/${id}`,
 
   shifts: "/shifts",
+
+  // Clients (factories): operators see their own; the Operations Manager sees all.
+  clients: "/clients",
   monthlyReport: "/reports/monthly",
 
   leaveRequests: "/leaves/requests",

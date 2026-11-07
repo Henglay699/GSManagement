@@ -27,7 +27,17 @@ public class RoleController(IRoleService roleService) : ControllerBase
         return Ok(results.Value);
     }
 
-    [HttpGet("{id}")]
+    // Lightweight list for the "assign roles" picker on the user form. Gated by
+    // AssignRole rather than ViewRole, so assigning roles doesn't require access
+    // to the role management pages.
+    [HttpGet("options")]
+    [HasPermission(AppPermission.AssignRole)]
+    public async Task<ActionResult<List<RoleOptionResponse>>> GetRoleOptions(CancellationToken ct)
+    {
+        return Ok(await roleService.GetRoleOptionsAsync(ct));
+    }
+
+    [HttpGet("{id:int}")]
     [HasPermission(AppPermission.ViewRole)]
     public async Task<ActionResult<RoleResponse>> GetRoleById(int id, CancellationToken ct)
     {

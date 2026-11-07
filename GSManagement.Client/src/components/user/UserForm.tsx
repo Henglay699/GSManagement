@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAsync } from "../../hooks/useAsync";
 import { getErrorMessage } from "../../lib/api";
 import { paths } from "../../lib/paths";
-import { fetchRoles } from "../../services/roleService";
+import { fetchRoleOptions } from "../../services/roleService";
+import { useAuth } from "../../context/AuthContext";
+import { Permission } from "../../lib/permissions";
 import type { PhotoChange, UserFormData } from "../../types/user";
 import {
   ArrowLeft,
@@ -27,6 +29,8 @@ function UserForm({
   isEditMode = false,
 }: UserFormProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canAssignRoles = hasPermission(Permission.AssignRole);
   // Edit pages only render this form once the user has loaded, so the
   // initial values can seed state directly.
   const [userName, setUserName] = useState(initialValues?.userName ?? "");
@@ -42,11 +46,16 @@ function UserForm({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Without AssignRole the roles section is hidden and never sent, so the
+  // server keeps the user's current roles.
   const roles = useAsync(
-    useCallback(() => fetchRoles(1, 100, ""), []),
+    useCallback(
+      () => (canAssignRoles ? fetchRoleOptions() : Promise.resolve([])),
+      [canAssignRoles],
+    ),
     "Failed to load roles.",
   );
-  const availableRoles = roles.data?.items ?? [];
+  const availableRoles = roles.data ?? [];
   const loadingRoles = roles.loading;
 
   const handleRoleToggle = (roleId: number) => {
@@ -67,7 +76,7 @@ function UserForm({
           userName,
           email,
           isActive,
-          roleIds: selectedRoleIds,
+          ...(canAssignRoles ? { roleIds: selectedRoleIds } : {}),
           ...(password.trim() ? { password } : {}),
         },
         photo,
@@ -135,7 +144,8 @@ function UserForm({
 
           {/* Grid Layout: Assign Roles on Left, Account Info on Right */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* LEFT COLUMN: Assign Roles */}
+            {/* LEFT COLUMN: Assign Roles (only with AssignRole) */}
+            {canAssignRoles && (
             <div className="bg-slate-50/70 dark:bg-subtle p-5 rounded-xl border border-slate-200/80 dark:border-line space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-line-strong">
                 <ShieldCheck
@@ -181,9 +191,12 @@ function UserForm({
                 </div>
               )}
             </div>
+            )}
 
             {/* RIGHT COLUMN: User Account Details */}
-            <div className="lg:col-span-2 space-y-5">
+            <div
+              className={`${canAssignRoles ? "lg:col-span-2" : "lg:col-span-3"} space-y-5`}
+            >
               <div className="flex items-center gap-2 pb-2 border-b border-line">
                 <UserIcon
                   size={18}

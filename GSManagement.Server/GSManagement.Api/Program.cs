@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Attendance runs on company time, not the server's timezone.
 AppClock.Configure(builder.Configuration["App:TimeZone"]);
-    
+
 // Add services to the container.
 builder.Services.AddControllers(options =>
     {
@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddDbContext<GSDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresSql")));
 
 builder.Services.AddJwtAuthServices(builder.Configuration);
 

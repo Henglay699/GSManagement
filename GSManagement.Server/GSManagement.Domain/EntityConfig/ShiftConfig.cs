@@ -25,7 +25,7 @@ internal class ShiftConfig : IEntityTypeConfiguration<Shift>
             .HasDefaultValue(false);
 
         builder.HasIndex(s => s.IsDefault)
-            .HasFilter("[IsDefault] = 1")
+            .HasFilter("\"IsDefault\" = true")
             .IsUnique()
             .HasDatabaseName("IX_Shifts_SingleDefault");
     }

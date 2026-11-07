@@ -13,6 +13,7 @@ const TITLES: [string, string][] = [
   [paths.leaveHistory, "Leave History"],
   ["/leaves/", "Leave Request"],
   [paths.shifts, "Shifts"],
+  [paths.clients, "Clients"],
   [paths.users, "Users"],
   [paths.roles, "Roles"],
   [paths.permissions, "Permissions"],
